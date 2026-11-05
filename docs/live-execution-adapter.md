@@ -1,5 +1,12 @@
 # Live-execution adapter — design
 
+> ⚠️ **Real money.** Everything below this line is about letting unattended
+> software place actual orders with actual funds. You can lose your entire
+> stake; no strategy in this repo has a demonstrated edge (see the research
+> logs); bugs and venue changes happen. Read this document in full, keep
+> stakes at canary size, and know where the emergency stop is
+> (`python -m emergency_stop activate`) before enabling anything.
+
 **Status:** built + wired, **dormant by default**. Flipping it on is a
 deliberate, multi-gate human action (see *Turning it on*). Until then every
 strategy daemon behaves exactly as it does today (paper writes).

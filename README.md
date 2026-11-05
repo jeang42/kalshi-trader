@@ -9,6 +9,15 @@ Criterion, run honest backtests (fees, half-spread, out-of-sample ledger),
 paper-trade strategies on a cron fleet, and — optionally, behind three
 independent gates — place real Kalshi orders.
 
+> ⚠️ **This software can trade real money, and trading prediction markets can
+> lose it — up to your entire stake.** The live-order path is off by default
+> and triple-gated, but if you enable it, orders are placed with your real
+> funds, by unattended automation, using strategies this repo's own research
+> record shows have **no demonstrated edge**. Read
+> [Disclaimers & risk](#disclaimers--risk) and the
+> [live-execution runbook](docs/live-execution-adapter.md) in full before
+> setting `KALSHI_LIVE_ENABLED=true`. Use entirely at your own risk.
+
 **What makes this repo worth reading is not a trading edge. It is the absence
 of one, measured carefully.** Over six months this system tested strategy
 families spanning longshot fades, favorite backing, in-game sports reaction,
@@ -225,17 +234,37 @@ transact, not just the analytical ones. Tests cannot reach the network
 For project matters, open an [issue](https://github.com/jeang42/kalshi-trader/issues).
 For anything else: [nexurite.ai](https://nexurite.ai).
 
-## Disclaimers
+## Disclaimers & risk
 
+- **This software can place real-money trades.** With a Kalshi API key
+  configured and the live gates deliberately enabled, strategy daemons place
+  actual orders with your actual funds — unattended. Everything can go wrong
+  that goes wrong with unattended trading software: bugs, bad fills, venue
+  API changes, network failures mid-order, and strategies that simply lose.
+  **You can lose your entire stake.** Positions in binary markets routinely
+  go to $0.
+- **Nothing in this repository is financial advice, and no strategy in it has
+  a demonstrated edge.** That is not boilerplate — it is the repo's central,
+  measured finding. The research record exists precisely because the answer
+  to "is there an edge here?" was no, over and over. If you flip anything
+  live expecting profit, you are betting against this repo's own evidence.
+- **Read the docs before enabling anything live.** At minimum: the
+  [live-execution runbook](docs/live-execution-adapter.md) (gates, pre-flight,
+  go-live procedure), `python -m live_gates` (the authoritative answer to
+  what can place orders right now), and the emergency stop
+  (`python -m emergency_stop activate`). Keep stakes at canary size until you
+  have verified fills, resolution, and the audit log yourself.
+- **Past results do not predict future results** — and the past results here
+  were negative after costs.
 - This project is **not affiliated with, endorsed by, or connected to Kalshi
   or Polymarket** in any way. "Kalshi" and "Polymarket" are trademarks of
   their respective owners, used here only to identify the public APIs the
-  software talks to.
-- **Nothing in this repository is financial advice.** The research record
-  exists precisely because the measured answer to "is there an edge here?"
-  was no. Prediction-market trading can lose money; the live-order path is
-  disabled by default and gated three independent ways for a reason.
-- Use at your own risk, under the terms of the license below.
+  software talks to. You are responsible for ensuring that trading on these
+  venues is legal where you live and that your use complies with each venue's
+  terms of service.
+- This software is provided **"AS IS", without warranty of any kind**, per
+  the Apache-2.0 license below. The authors accept no liability for trading
+  losses, data loss, or anything else arising from use of this software.
 
 ## License
 

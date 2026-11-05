@@ -1,5 +1,11 @@
 # Kalshi Trader — Quickstart
 
+> ⚠️ The analysis console below is read-only and risk-free. But this repo
+> also contains a gated **real-money order path**: if you ever configure a
+> Kalshi API key and enable the live gates, you are trading actual funds at
+> your own risk — read the README's *Disclaimers & risk* section and
+> `docs/live-execution-adapter.md` first.
+
 > **Scope note (2026-08-17):** this covers running the Streamlit console
 > locally, which is still accurate. It does **not** describe the background
 > service fleet, the automated arms, or operations — that system grew up after
