@@ -7,12 +7,14 @@
 - [x] Unauthenticated services no longer bind the network by default — fixed.
 - [x] Control-plane balance leak on the open `/health.json` — fixed.
 - [x] Mandatory order caps enforceable regardless of caller — fixed.
-- [ ] **Decide the `research/*.json` question** (~6.9 MB of captured Kalshi
-  API output incl. verbatim rules text). Current state: kept, with a NOTICE
-  clause excluding it from the Apache grant. Options: keep-with-notice
-  (needs the author's comfort with Kalshi's ToS on redistribution), slim to
-  derived aggregates, or delete. *This is the only open blocker-class item,
-  and it is a judgment call only the author can make.*
+- [x] **Decide the `research/*.json` question** — author chose **slim to
+  derived aggregates** (2026-11-04): removed the two raw API dumps
+  (`active_liquidity_programs.json`, `incentive_markets_cache.json`) and
+  stripped Kalshi-authored title/rules text from `live_census.json`'s
+  example records (6.9 MB → ~1.1 MB). Kept: both derived screens,
+  the slimmed census, and `oi_confirmation.json` (the author's own
+  statistics). NOTICE narrowed accordingly; the scripts regenerate the
+  removed captures when rerun.
 - [ ] Final read of `docs/` for anything the author considers private
   (the logs are already redacted to `$—`; `docs/second-machine.md` describes
   the home setup in generic terms — judged publishable, but it is personal
@@ -22,8 +24,9 @@
 
 - [ ] Re-run `pytest`, `ruff`, `mypy` on the merge commit (CI does this).
 - [ ] Tag the release (e.g. `v0.2.0a1`) so "final release" is a fixed ref.
-- [ ] Add a `SECURITY.md` stating the no-maintenance policy (one paragraph,
-  mirrors README "Maintenance status") so GitHub's security tab isn't blank.
+- [x] Add a `SECURITY.md` stating the no-maintenance policy (one paragraph,
+  mirrors README "Maintenance status") so GitHub's security tab isn't blank
+  — added 2026-11-04.
 - [ ] Replace the fallback tuner IPs `192.168.0.50/.51` with RFC 5737
   documentation addresses or require `HDHR_IP` to be set (S-4).
 - [x] Author sign-off on the `dex` example profile name (S-5) — author chose

@@ -2159,11 +2159,14 @@ edge claim. It is not an instruction to trade at the current quote.
 [`scan_incentives.py`](../research/edge_2026_10_21/scan_incentives.py),
 [`measure_incentives.py`](../research/edge_2026_10_21/measure_incentives.py),
 then [`check_incentive_priority.py`](../research/edge_2026_10_21/check_incentive_priority.py).
-Their timestamped outputs are `live_census.json`, `active_liquidity_programs.json`,
-`incentive_depth_screen.json`, and `incentive_priority_screen.json` in the same
-directory. The intermediate `incentive_markets_cache.json` avoids re-fetching
-market metadata. Public data and rewards change quickly; rerun before using
-the counts for any later decision.
+Their timestamped outputs `live_census.json`, `incentive_depth_screen.json`,
+and `incentive_priority_screen.json` are kept in the same directory
+(`live_census.json` slimmed for the public release: Kalshi-authored
+title/rules text removed from the example records). The raw captures the
+scripts also write — `active_liquidity_programs.json` and the intermediate
+`incentive_markets_cache.json` — are not in the repo (verbatim Kalshi API
+dumps; see NOTICE); rerunning the scripts regenerates them. Public data and
+rewards change quickly; rerun before using the counts for any later decision.
 
 ## 2026-10-21 — Follow-up: can we buy the favorite the instant a market lists?
 

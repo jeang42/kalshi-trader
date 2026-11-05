@@ -1,7 +1,10 @@
 kalshi-trader
 Copyright 2026 Jeff Angelcyk
 
-The JSON files under research/ are captured output of the public Kalshi
-API (market metadata, liquidity-program listings, and rules text). That
-content belongs to Kalshi and is included for research reproducibility
-only; it is NOT covered by this project's Apache-2.0 license grant.
+The JSON files under research/ contain derived research aggregates plus
+factual market identifiers and numeric quote/volume data captured from
+the public Kalshi API. The raw API captures (full liquidity-program and
+market-metadata dumps, including Kalshi-authored rules text) were removed
+before the public release; what remains of Kalshi-originated data is
+included for research reproducibility only and is NOT covered by this
+project's Apache-2.0 license grant.

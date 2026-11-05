@@ -10,8 +10,6 @@ Run::
 
     uvicorn wnba.web:app --port 8771
 
-Then open http://<host>:8771 from anywhere on the LAN.
-
 Pages: Today (slate + model win-prob + favorite-hold highlight),
 Standings (team ratings). No Chat/Analysis pages — those need the
 live-play + LLM machinery WNBA doesn't have (forecast-only sidecar).
