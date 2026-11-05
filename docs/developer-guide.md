@@ -781,7 +781,7 @@ The page introspects each strategy's keyword-only parameters via `inspect.signat
 
 ### The market-baseline gate
 
-`market_baseline_brier(dataset)` computes the Brier of "just predict `latest_price`" on the same snapshots. The page shows it alongside the strategy's Brier with a pass/fail framing. This is the **explicit shippability test** from `docs/recommendations-design.md`: a strategy whose Brier doesn't beat the market baseline on its category is not edge, it's noise + transaction costs.
+The gate is **enforced in the engine and carried on the result schema**, not just displayed. Both `run_backtest` and `run_backtest_walk_forward` compute a matched baseline — the Brier of "just trust the decision-time market price" over exactly the trades the strategy made — and stamp three fields onto `BacktestResult`: `market_baseline_brier`, `market_baseline_n`, and `beats_market_baseline` (strict `<`; tying the market is not an edge; all three stay `None`/`0`/`None` on a zero-trade run). A failing gate also appends a `GATE FAILED` warning to `result.warnings`, `by_category` gains a per-category `market_brier`, and the fields persist through 📜 Backtest History (older saves load with the fields defaulted to `None`). The free function `market_baseline_brier(dataset)` remains for the dataset-wide version. This is the **explicit shippability test** from `docs/recommendations-design.md`: a strategy whose Brier doesn't beat the market baseline is not edge, it's noise + transaction costs.
 
 ### Drawdown math
 

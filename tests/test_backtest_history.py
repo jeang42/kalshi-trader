@@ -226,3 +226,54 @@ class TestLoadResilience:
         parsed = json.loads(contents)  # no exception = valid JSON
         assert parsed["run_id"] == rid
         assert "result" in parsed
+
+
+# ---------------------------------------------------------------------------
+# Market-baseline gate fields: persistence + backward compatibility
+# ---------------------------------------------------------------------------
+
+class TestGateFieldPersistence:
+    def test_real_result_carries_the_gate(self):
+        # Sanity: _real_result (prob 0.5 vs market 0.4, resolves YES) has
+        # strategy Brier 0.25 vs baseline (0.4-1)² = 0.36 → passes.
+        r = _real_result()
+        assert r.market_baseline_brier == pytest.approx(0.36)
+        assert r.market_baseline_n == 1
+        assert r.beats_market_baseline is True
+
+    def test_round_trip_preserves_gate_fields(self):
+        result = _real_result()
+        rid = bh.save_run(result)
+        loaded, _meta = bh.load_run(rid)
+        assert loaded.market_baseline_brier == pytest.approx(
+            result.market_baseline_brier
+        )
+        assert loaded.market_baseline_n == result.market_baseline_n
+        assert loaded.beats_market_baseline is True
+
+    def test_legacy_payload_without_gate_fields_loads_with_defaults(
+        self, isolated_history_dir,
+    ):
+        # Simulate a run saved before the schema carried the gate: strip
+        # the three fields from the stored JSON and reload.
+        rid = bh.save_run(_real_result())
+        path = Path(isolated_history_dir) / f"{rid}.json"
+        payload = json.loads(path.read_text())
+        for key in ("market_baseline_brier", "market_baseline_n",
+                    "beats_market_baseline"):
+            payload["result"].pop(key, None)
+        path.write_text(json.dumps(payload, default=str))
+
+        loaded, _meta = bh.load_run(rid)
+        assert loaded is not None
+        assert loaded.market_baseline_brier is None
+        assert loaded.market_baseline_n == 0
+        assert loaded.beats_market_baseline is None
+
+    def test_list_runs_includes_gate_columns(self):
+        bh.save_run(_real_result())
+        df = bh.list_runs()
+        assert "market_baseline_brier" in df.columns
+        assert "beats_market_baseline" in df.columns
+        assert bool(df.iloc[0]["beats_market_baseline"]) is True
+        assert df.iloc[0]["market_baseline_brier"] == pytest.approx(0.36)

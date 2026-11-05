@@ -370,9 +370,31 @@ if result.portfolio_constrained:
     )
 
 # ── Gate: does the strategy beat the market baseline on Brier? ──────────
-baseline = st.session_state.get("last_baseline")
-if baseline is not None and baseline[0] is not None and result.brier_score is not None:
-    b_brier, b_n = baseline
+# Primary source: the gate fields carried on BacktestResult (matched —
+# "trust the decision-time price" over exactly the trades the strategy
+# made). Fallback for runs saved before the schema carried the gate:
+# the dataset-wide baseline kept in session state.
+_gate: tuple[float, int, str] | None = None
+if result.market_baseline_brier is not None:
+    _gate = (
+        result.market_baseline_brier,
+        result.market_baseline_n,
+        f"\"Just trust the decision-time market price\" scored on the same "
+        f"{result.market_baseline_n} trade(s) the strategy made — apples "
+        f"to apples. The gate every alpha strategy has to clear before "
+        f"it's worth shipping.",
+    )
+else:
+    _legacy = st.session_state.get("last_baseline")
+    if _legacy is not None and _legacy[0] is not None:
+        _gate = (
+            _legacy[0], _legacy[1],
+            f"\"Just trust the latest price\" applied to the same "
+            f"{_legacy[1]} snapshots (dataset-wide fallback for runs saved "
+            f"before the gate lived on the result).",
+        )
+if _gate is not None and result.brier_score is not None:
+    b_brier, b_n, _gate_help = _gate
     delta = result.brier_score - b_brier
     beats = delta < 0
     st.markdown("**Brier vs. market baseline:**")
@@ -380,9 +402,7 @@ if baseline is not None and baseline[0] is not None and result.brier_score is no
     g1.metric("Strategy Brier", f"{result.brier_score:.4f}")
     g2.metric("Market-baseline Brier",
               f"{b_brier:.4f}",
-              help=f"\"Just trust the latest price\" applied to the same "
-                   f"{b_n} snapshots. The gate every alpha strategy has to "
-                   f"clear before it's worth shipping.")
+              help=_gate_help)
     g3.metric("Δ (strategy − baseline)",
               f"{delta:+.4f}",
               delta="better" if beats else "worse",

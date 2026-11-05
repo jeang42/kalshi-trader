@@ -189,7 +189,9 @@ def list_runs() -> pd.DataFrame:
 
     Columns: ``run_id``, ``saved_at``, ``venue``, ``eval_mode``,
     ``strategy_name``, ``n_trades``, ``hit_rate``, ``roi``, ``brier_score``,
-    ``total_pnl``, ``max_drawdown``, ``path``.
+    ``market_baseline_brier``, ``beats_market_baseline``, ``total_pnl``,
+    ``max_drawdown``, ``path``. The two baseline columns are None for runs
+    saved before the gate was carried on BacktestResult.
     """
     d = _dir()
     if not d.exists():
@@ -213,6 +215,8 @@ def list_runs() -> pd.DataFrame:
             "hit_rate": result.get("hit_rate"),
             "roi": result.get("roi"),
             "brier_score": result.get("brier_score"),
+            "market_baseline_brier": result.get("market_baseline_brier"),
+            "beats_market_baseline": result.get("beats_market_baseline"),
             "total_pnl": float(result.get("total_pnl", 0.0) or 0.0),
             "max_drawdown": float(result.get("max_drawdown", 0.0) or 0.0),
             "path": str(path),

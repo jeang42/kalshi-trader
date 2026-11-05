@@ -156,6 +156,16 @@ class BacktestResult:
     trades: pd.DataFrame
     equity_curve: pd.DataFrame   # cols: closed_time, cumulative_pnl
     by_category: dict[str, dict[str, Any]]
+    # Market-baseline Brier gate, carried on the result itself so every
+    # caller (UI, history, scripts) sees the same verdict. The baseline
+    # is "just trust the decision-time market price" scored over exactly
+    # the trades the strategy made (apples to apples — same markets,
+    # same decision instants). `beats_market_baseline` is strict (<):
+    # tying the market is not an edge. All three stay at their defaults
+    # when the run produced no trades.
+    market_baseline_brier: float | None = None
+    market_baseline_n: int = 0
+    beats_market_baseline: bool | None = None
     warnings: list[str] = field(default_factory=list)
 
 
@@ -800,6 +810,10 @@ def run_backtest(
     )
     max_dd = _max_drawdown(eq["cumulative_pnl"])
     brier = float(trades["brier_term"].mean())
+    mb_brier, mb_n = _matched_market_baseline(trades)
+    beats_baseline: bool | None = None
+    if mb_brier is not None:
+        beats_baseline = bool(brier < mb_brier)
 
     by_cat: dict[str, dict[str, Any]] = {}
     for cat, sub in trades.groupby("category"):
@@ -813,6 +827,10 @@ def run_backtest(
             "total_pnl": pnl_c,
             "roi": pnl_c / stake_c if stake_c > 0 else None,
             "brier": float(sub["brier_term"].mean()),
+            "market_brier": float(
+                ((sub["market_yes_price"].astype(float)
+                  - sub["actual"].astype(float)) ** 2).mean()
+            ),
         }
 
     warnings_list: list[str] = []
@@ -822,6 +840,14 @@ def run_backtest(
     if roi is not None and roi < 0:
         warnings_list.append(
             f"ROI is {roi*100:+.1f}% — this strategy is losing money on this sample."
+        )
+    if beats_baseline is False:
+        warnings_list.append(
+            f"GATE FAILED: strategy Brier {brier:.4f} does not beat the "
+            f"market-baseline Brier {mb_brier:.4f} on the same {mb_n} "
+            "trade(s) — the strategy has no forecasting edge over the "
+            "price itself; any PnL on this sample is market movement "
+            "plus costs, not skill."
         )
     if portfolio_constrained and n_skipped_for_cash > 0:
         warnings_list.append(
@@ -864,6 +890,9 @@ def run_backtest(
         trades=trades,
         equity_curve=eq,
         by_category=by_cat,
+        market_baseline_brier=mb_brier,
+        market_baseline_n=mb_n,
+        beats_market_baseline=beats_baseline,
         warnings=warnings_list,
     )
 
@@ -892,6 +921,25 @@ def market_baseline_brier(
     if not terms:
         return (None, 0)
     return (sum(terms) / len(terms), len(terms))
+
+
+def _matched_market_baseline(trades: pd.DataFrame) -> tuple[float | None, int]:
+    """Brier of "just trust the decision-time market price" over exactly
+    the trades the strategy made — the apples-to-apples form of
+    :func:`market_baseline_brier`.
+
+    Both engines stamp ``market_yes_price`` (the raw mid the strategy
+    saw when it decided) and ``actual`` (1/0 resolution) onto every
+    trade row, so this is a pure column computation. Returns
+    ``(brier, n)``; ``(None, 0)`` when there are no usable rows.
+    """
+    if trades.empty or "market_yes_price" not in trades.columns:
+        return (None, 0)
+    sub = trades[["market_yes_price", "actual"]].dropna()
+    if sub.empty:
+        return (None, 0)
+    terms = (sub["market_yes_price"].astype(float) - sub["actual"].astype(float)) ** 2
+    return (float(terms.mean()), int(len(sub)))
 
 
 # ---------------------------------------------------------------------------
@@ -1425,6 +1473,10 @@ def run_backtest_walk_forward(
     )
     max_dd = _max_drawdown(eq["cumulative_pnl"])
     brier = float(trades["brier_term"].mean())
+    mb_brier, mb_n = _matched_market_baseline(trades)
+    beats_baseline: bool | None = None
+    if mb_brier is not None:
+        beats_baseline = bool(brier < mb_brier)
 
     by_cat: dict[str, dict[str, Any]] = {}
     for cat, sub in trades.groupby("category"):
@@ -1438,6 +1490,10 @@ def run_backtest_walk_forward(
             "total_pnl": pnl_c,
             "roi": pnl_c / stake_c if stake_c > 0 else None,
             "brier": float(sub["brier_term"].mean()),
+            "market_brier": float(
+                ((sub["market_yes_price"].astype(float)
+                  - sub["actual"].astype(float)) ** 2).mean()
+            ),
         }
 
     warnings_list: list[str] = []
@@ -1447,6 +1503,14 @@ def run_backtest_walk_forward(
     if roi is not None and roi < 0:
         warnings_list.append(
             f"ROI is {roi*100:+.1f}% — this strategy is losing money on this sample."
+        )
+    if beats_baseline is False:
+        warnings_list.append(
+            f"GATE FAILED: strategy Brier {brier:.4f} does not beat the "
+            f"market-baseline Brier {mb_brier:.4f} on the same {mb_n} "
+            "trade(s) — the strategy has no forecasting edge over the "
+            "price itself; any PnL on this sample is market movement "
+            "plus costs, not skill."
         )
     n_signal_flips = int((trades["exit_reason"] == "signal_flip").sum())
     if n_signal_flips:
@@ -1496,6 +1560,9 @@ def run_backtest_walk_forward(
         trades=trades,
         equity_curve=eq,
         by_category=by_cat,
+        market_baseline_brier=mb_brier,
+        market_baseline_n=mb_n,
+        beats_market_baseline=beats_baseline,
         warnings=warnings_list,
     )
 

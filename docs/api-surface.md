@@ -144,6 +144,9 @@ position_exceeds_limit(cost_dollars, bankroll, max_pct) -> bool
 @dataclass Signal              # direction "YES"|"NO", probability, fraction_override
 @dataclass BacktestResult      # n_trades, hit_rate, hit_rate_ci, total_pnl, roi,
                                # sharpe_per_trade, max_drawdown, brier_score,
+                               # market_baseline_brier, market_baseline_n,
+                               # beats_market_baseline (the gate, matched to
+                               #   the strategy's own trades; strict <),
                                # trades, equity_curve, by_category, warnings
 build_dataset(provider, df_closed, *, lead_hours, history_days, fidelity,
               max_markets, progress_callback) -> list[(MarketSnapshot, Resolution)]

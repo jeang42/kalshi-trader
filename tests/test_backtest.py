@@ -1157,3 +1157,170 @@ class TestFavoriteGrindPlugin:
         sig = fn(self._snap(0.99), assumed_edge=0.05)
         assert sig is not None
         assert sig.probability <= 0.99
+
+
+# ---------------------------------------------------------------------------
+# Market-baseline Brier gate (carried on BacktestResult)
+# ---------------------------------------------------------------------------
+
+class TestMarketBaselineGate:
+    """The shippability gate: the strategy's Brier must strictly beat the
+    Brier of "just trust the decision-time market price" scored over the
+    same trades the strategy made."""
+
+    AS_OF = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
+
+    def _market(self, cid, price, resolved_yes, *, category="Sports"):
+        snap = bt.MarketSnapshot(
+            cid, f"{cid}?", category, self.AS_OF,
+            _price_history([price], start=self.AS_OF - timedelta(hours=1)),
+        )
+        res = bt.Resolution(cid, resolved_yes, self.AS_OF + timedelta(hours=12))
+        return (snap, res)
+
+    def _run(self, strategy, dataset, **kw):
+        kw.setdefault("bankroll", 1000.0)
+        kw.setdefault("kelly_multiplier", 0.5)
+        kw.setdefault("half_spread", 0.0)
+        return bt.run_backtest(strategy, dataset, **kw)
+
+    def test_gate_passes_when_strategy_out_forecasts_the_price(self):
+        # A: market 0.80 resolves YES → baseline term 0.04
+        # B: market 0.30 resolves NO  → baseline term 0.09   (mean 0.065)
+        # Strategy: 0.9 on A (term 0.01), 0.1 on B (term 0.01) → Brier 0.01
+        dataset = [self._market("A", 0.80, True),
+                   self._market("B", 0.30, False)]
+        probs = {"A": 0.9, "B": 0.1}
+
+        def strat(snap):
+            p = probs[snap.condition_id]
+            d = "YES" if p > snap.latest_price else "NO"
+            return bt.Signal(direction=d, probability=p)
+
+        r = self._run(strat, dataset)
+        assert r.n_trades == 2
+        assert r.brier_score == pytest.approx(0.01)
+        assert r.market_baseline_brier == pytest.approx(0.065)
+        assert r.market_baseline_n == 2
+        assert r.beats_market_baseline is True
+        assert not any("GATE FAILED" in w for w in r.warnings)
+
+    def test_gate_fails_when_strategy_worse_than_price(self):
+        # Flat 0.5 forecaster: Brier 0.25 vs baseline 0.065 → fail + warning.
+        dataset = [self._market("A", 0.80, True),
+                   self._market("B", 0.30, False)]
+
+        def strat(snap):
+            d = "NO" if snap.latest_price > 0.5 else "YES"
+            return bt.Signal(direction=d, probability=0.5)
+
+        r = self._run(strat, dataset)
+        assert r.n_trades == 2
+        assert r.brier_score == pytest.approx(0.25)
+        assert r.market_baseline_brier == pytest.approx(0.065)
+        assert r.beats_market_baseline is False
+        assert any("GATE FAILED" in w for w in r.warnings)
+
+    def test_tying_the_market_does_not_pass(self):
+        # Engineered exact tie: strategy and baseline share the same two
+        # Brier terms {0.04, 0.09}, swapped between the two markets.
+        # A: price 0.8, resolves YES (baseline 0.04); strategy 0.7 → NO fires,
+        #    strategy term 0.09.
+        # B: price 0.7, resolves YES (baseline 0.09); strategy 0.8 → YES fires,
+        #    strategy term 0.04.
+        dataset = [self._market("A", 0.80, True),
+                   self._market("B", 0.70, True)]
+        probs = {"A": 0.7, "B": 0.8}
+
+        def strat(snap):
+            p = probs[snap.condition_id]
+            d = "YES" if p > snap.latest_price else "NO"
+            return bt.Signal(direction=d, probability=p)
+
+        r = self._run(strat, dataset)
+        assert r.n_trades == 2
+        assert r.brier_score == pytest.approx(r.market_baseline_brier)
+        assert r.beats_market_baseline is False  # strict <: a tie is no edge
+
+    def test_zero_trades_leaves_gate_unset(self):
+        def strat(snap):
+            return None
+
+        r = self._run(strat, [self._market("A", 0.50, True)])
+        assert r.n_trades == 0
+        assert r.market_baseline_brier is None
+        assert r.market_baseline_n == 0
+        assert r.beats_market_baseline is None
+        assert not any("GATE FAILED" in w for w in r.warnings)
+
+    def test_baseline_matches_trade_columns_exactly(self):
+        # The result field must equal the column computation over the
+        # trades the engine actually recorded — no silent sample drift.
+        dataset = [self._market("A", 0.80, True),
+                   self._market("B", 0.30, False)]
+
+        def strat(snap):
+            d = "NO" if snap.latest_price > 0.5 else "YES"
+            return bt.Signal(direction=d, probability=0.5)
+
+        r = self._run(strat, dataset)
+        expected = float(
+            ((r.trades["market_yes_price"] - r.trades["actual"]) ** 2).mean()
+        )
+        assert r.market_baseline_brier == pytest.approx(expected)
+        assert r.market_baseline_n == len(r.trades)
+
+    def test_by_category_carries_market_brier(self):
+        dataset = [self._market("A", 0.80, True, category="Sports"),
+                   self._market("B", 0.30, False, category="Politics")]
+        probs = {"A": 0.9, "B": 0.1}
+
+        def strat(snap):
+            p = probs[snap.condition_id]
+            d = "YES" if p > snap.latest_price else "NO"
+            return bt.Signal(direction=d, probability=p)
+
+        r = self._run(strat, dataset)
+        assert r.by_category["Sports"]["market_brier"] == pytest.approx(0.04)
+        assert r.by_category["Politics"]["market_brier"] == pytest.approx(0.09)
+
+    def test_walk_forward_carries_gate_and_agrees_with_trades(self):
+        as_of = self.AS_OF
+        prices = _price_history([0.4] * 6, start=as_of - timedelta(hours=6))
+        snap = bt.MarketSnapshot("W", "w?", "Sports", as_of, prices)
+        res = bt.Resolution("W", True, as_of + timedelta(hours=2))
+
+        def strat(snap):
+            return bt.Signal(direction="YES", probability=0.6)
+
+        r = bt.run_backtest_walk_forward(
+            strat, [(snap, res)],
+            bankroll=1000.0, kelly_multiplier=0.5, half_spread=0.0,
+            eval_step_hours=1.0,
+        )
+        assert r.n_trades >= 1
+        expected = float(
+            ((r.trades["market_yes_price"] - r.trades["actual"]) ** 2).mean()
+        )
+        assert r.market_baseline_brier == pytest.approx(expected)
+        assert r.market_baseline_n == len(r.trades)
+        assert r.beats_market_baseline is (r.brier_score < r.market_baseline_brier)
+
+    def test_walk_forward_zero_trades_leaves_gate_unset(self):
+        as_of = self.AS_OF
+        prices = _price_history([0.4] * 6, start=as_of - timedelta(hours=6))
+        snap = bt.MarketSnapshot("W", "w?", "Sports", as_of, prices)
+        res = bt.Resolution("W", True, as_of + timedelta(hours=2))
+
+        def strat(snap):
+            return None
+
+        r = bt.run_backtest_walk_forward(
+            strat, [(snap, res)],
+            bankroll=1000.0, kelly_multiplier=0.5, half_spread=0.0,
+            eval_step_hours=1.0,
+        )
+        assert r.n_trades == 0
+        assert r.market_baseline_brier is None
+        assert r.market_baseline_n == 0
+        assert r.beats_market_baseline is None
