@@ -28,8 +28,10 @@
 - [x] Add a `SECURITY.md` stating the no-maintenance policy (one paragraph,
   mirrors README "Maintenance status") so GitHub's security tab isn't blank
   — added 2026-11-04.
-- [ ] Replace the fallback tuner IPs `192.168.0.50/.51` with RFC 5737
-  documentation addresses or require `HDHR_IP` to be set (S-4).
+- [x] Replace the fallback tuner IPs `192.168.0.50/.51` with RFC 5737
+  documentation addresses or require `HDHR_IP` to be set (S-4) — done
+  2026-11-05: fallback is now `192.0.2.50` (RFC 5737, unroutable),
+  `HDHR_IP` documented in `.env.example`; doctests/tests/docs updated.
 - [x] Author sign-off on the `dex` example profile name (S-5) — author chose
   removal; renamed to the neutral `user2` everywhere (code, tests, docs,
   CHANGELOG). Note for a redeploying fork: an existing `data/dex/` profile

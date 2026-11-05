@@ -88,8 +88,8 @@ def test_estimate_lag_handles_degenerate_short_signal():
 
 
 def test_resolve_source_url_hdhr_with_tuner():
-    url = fl.resolve_source_url("hdhr:11.1:3", hdhr_ip="192.168.0.51")
-    assert url == "http://192.168.0.51:5004/tuner3/v11.1"
+    url = fl.resolve_source_url("hdhr:11.1:3", hdhr_ip="192.0.2.51")
+    assert url == "http://192.0.2.51:5004/tuner3/v11.1"
 
 
 def test_resolve_source_url_hdhr_default_tuner():

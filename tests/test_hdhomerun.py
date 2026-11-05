@@ -4,16 +4,16 @@ from pm.mention import hdhomerun as hdhr
 # ─── stream_url (pure) ──────────────────────────────────────────────────────
 
 def test_stream_url_default_tuner_and_ip():
-    assert hdhr.stream_url("CBS") == "http://192.168.0.50:5004/tuner3/v11.1"
+    assert hdhr.stream_url("CBS") == "http://192.0.2.50:5004/tuner3/v11.1"
 
 
 def test_stream_url_network_name_case_insensitive():
-    assert hdhr.stream_url("fox") == "http://192.168.0.50:5004/tuner3/v4.1"
-    assert hdhr.stream_url("Fox") == "http://192.168.0.50:5004/tuner3/v4.1"
+    assert hdhr.stream_url("fox") == "http://192.0.2.50:5004/tuner3/v4.1"
+    assert hdhr.stream_url("Fox") == "http://192.0.2.50:5004/tuner3/v4.1"
 
 
 def test_stream_url_numeric_channel_passthrough():
-    assert hdhr.stream_url("11.1", tuner=2) == "http://192.168.0.50:5004/tuner2/v11.1"
+    assert hdhr.stream_url("11.1", tuner=2) == "http://192.0.2.50:5004/tuner2/v11.1"
 
 
 def test_stream_url_custom_ip():
@@ -22,7 +22,7 @@ def test_stream_url_custom_ip():
 
 def test_stream_url_unknown_channel_name_passthrough():
     # Not a known DFW network key and not touched — passed through as-is.
-    assert hdhr.stream_url("99.1") == "http://192.168.0.50:5004/tuner3/v99.1"
+    assert hdhr.stream_url("99.1") == "http://192.0.2.50:5004/tuner3/v99.1"
 
 
 def test_pipeline_tuner_default_is_3():
@@ -56,7 +56,7 @@ class _FakeResp:
 
 def test_discover_success(monkeypatch):
     def fake_get(url, timeout=None):
-        assert url == "http://192.168.0.50/discover.json"
+        assert url == "http://192.0.2.50/discover.json"
         return _FakeResp({"FriendlyName": "HDHomeRun FLEX QUATRO", "TunerCount": 4, "DeviceID": "ABC123"})
 
     monkeypatch.setattr(hdhr.requests, "get", fake_get)
@@ -85,7 +85,7 @@ def test_discover_bad_status_returns_none(monkeypatch):
 
 def test_channel_present_found(monkeypatch):
     def fake_get(url, timeout=None):
-        assert url == "http://192.168.0.50/lineup.json"
+        assert url == "http://192.0.2.50/lineup.json"
         return _FakeResp([
             {"GuideNumber": "11.1", "GuideName": "KTVT"},
             {"GuideNumber": "4.1", "GuideName": "KDFW"},

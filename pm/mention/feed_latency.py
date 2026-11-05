@@ -69,7 +69,7 @@ Later — OTA tuner (HDHomeRun) as the low-latency reference vs a web feed::
     # python feed_latency.py \\
     #     --source OTA=hdhr:11.1:3 \\
     #     --source WEB=yt:https://www.youtube.com/watch?v=<LIVE_ID> \\
-    #     --seconds 90 --hdhr-ip 192.168.0.50
+    #     --seconds 90 --hdhr-ip 192.0.2.50
 
 Report is printed and also written to
 ``data/shared/feed_latency_report.txt``.
@@ -117,10 +117,10 @@ def resolve_source_url(spec: str, *, hdhr_ip: str, yt_dlp_bin: str = "yt-dlp") -
       :data:`DEFAULT_HDHR_TUNER` (3) when omitted.
     - ``yt:<url>``: resolves to a direct media URL via ``yt-dlp -g``.
 
-    >>> resolve_source_url("hdhr:11.1:3", hdhr_ip="192.168.0.51")
-    'http://192.168.0.51:5004/tuner3/v11.1'
-    >>> resolve_source_url("hdhr:11.1", hdhr_ip="192.168.0.51")
-    'http://192.168.0.51:5004/tuner3/v11.1'
+    >>> resolve_source_url("hdhr:11.1:3", hdhr_ip="192.0.2.51")
+    'http://192.0.2.51:5004/tuner3/v11.1'
+    >>> resolve_source_url("hdhr:11.1", hdhr_ip="192.0.2.51")
+    'http://192.0.2.51:5004/tuner3/v11.1'
     >>> resolve_source_url("https://example.com/stream.m3u8", hdhr_ip="x")
     'https://example.com/stream.m3u8'
     """

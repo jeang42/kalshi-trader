@@ -39,11 +39,14 @@ import requests
 
 log = logging.getLogger(__name__)
 
-#: Where the tuner lives when HDHR_IP is unset. Resolved PER CALL via
-#: device_ip(), never frozen at import (gotcha 1): the device is on DHCP and
-#: moved .43 -> .4 across the 2026-10 outage; the recorder then dialed a dead
-#: IP for weeks. A DHCP reservation on the router is the durable fix.
-_FALLBACK_IP = "192.168.0.50"
+#: Where the tuner lives when HDHR_IP is unset. This is an RFC 5737
+#: documentation address — a deliberate placeholder that will never route:
+#: set HDHR_IP in .env to your tuner's real address (find it via
+#: ``curl http://<tuner-ip>/discover.json``; a DHCP reservation on the
+#: router keeps it stable). Resolved PER CALL via device_ip(), never frozen
+#: at import (gotcha 1): a DHCP move once had the recorder dialing a dead
+#: IP for weeks.
+_FALLBACK_IP = "192.0.2.50"
 
 
 def device_ip() -> str:
@@ -102,9 +105,9 @@ def stream_url(channel: str, *, tuner: int = PIPELINE_TUNER, ip: str | None = No
     explicitly in the common case.
 
     >>> stream_url("CBS")
-    'http://192.168.0.50:5004/tuner3/v11.1'
+    'http://192.0.2.50:5004/tuner3/v11.1'
     >>> stream_url("11.1", tuner=2)
-    'http://192.168.0.50:5004/tuner2/v11.1'
+    'http://192.0.2.50:5004/tuner2/v11.1'
     >>> stream_url("fox", ip="10.0.0.5")
     'http://10.0.0.5:5004/tuner3/v4.1'
     """
