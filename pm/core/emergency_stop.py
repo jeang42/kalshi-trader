@@ -8,7 +8,7 @@ edits, no service restarts, no per-process state.
 Scope (what "halts" means):
 
     HALTED (refuses to take new actions):
-      - kalshi_orders.place_limit_order        — refuses with KalshiOrderError
+      - kalshi_orders.place_limit_order        — refuses with OrderRejected
       - strategy_runner.run_cycle              — short-circuits, no opens
       - Streamlit Buy/Sell buttons             — disabled with banner
       - Future: trigger-rule firing            — disarmed

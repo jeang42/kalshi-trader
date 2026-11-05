@@ -11,7 +11,15 @@ Trust model:
 - Every attempt — accepted, rejected, errored — is appended to
   ``data/shared/orders.log`` (or whatever ``ORDERS_LOG_PATH`` env
   points at). Audit-first: the line is written *before* the HTTP
-  call so a crash mid-request still leaves a trail.
+  call so a crash mid-request still leaves a trail, and the
+  pre-submission write is mandatory — an unwritable audit log refuses
+  the order (fail-closed) rather than placing it unrecorded.
+- Mandatory caps are enforced at THIS boundary, not only in callers:
+  every buy clears the per-order stake cap, and every order placed
+  through :func:`place_limit_order` clears the daily order cap, whose
+  check-and-reserve is atomic across processes (see
+  :func:`_submission_lock`). ``pre_flight_check`` remains the richer,
+  advisory layer for callers with more context (drawdown, mid-price).
 - Only limit orders are exposed. No market orders (surprise
   slippage during thin liquidity is the most common way to lose
   money fast). No batch endpoint wrapper in Phase 4.
@@ -23,6 +31,7 @@ Phase 5 and reuses the same primitives.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -32,6 +41,11 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - project targets Linux
+    fcntl = None  # type: ignore[assignment]
 
 import pandas as pd
 
@@ -91,11 +105,22 @@ def _orders_log_path() -> Path:
     return Path(os.getenv("ORDERS_LOG_PATH", str(DEFAULT_ORDERS_LOG)))
 
 
-def _audit(event: str, payload: dict) -> None:
-    """Append a JSON-line audit record. Best-effort: filesystem failures
-    are logged but don't propagate — refusing to place the order
-    because the log file is unwritable is worse UX than placing the
-    order with a stderr warning."""
+def _audit(event: str, payload: dict, *, required: bool = False) -> None:
+    """Append a JSON-line audit record.
+
+    ``required=True`` — used for every pre-submission record — makes the
+    write **fail closed**: if the audit line cannot be persisted, the order
+    is refused (``OrderRejected``) rather than placed unrecorded. The
+    audit-first invariant this module documents ("the line is written
+    *before* the HTTP call") is only an invariant if an unwritable log
+    stops the order. The cost is that a full disk also blocks exits placed
+    through this module; the operator can always exit manually on Kalshi's
+    own website, but an unaudited real-money order can never be un-placed.
+
+    ``required=False`` (post-hoc records: accepted / error, and
+    ``cancel_submit`` — refusing to *cancel* because the log is unwritable
+    would be risk-increasing) stays best-effort: logged but not raised.
+    """
     p = _orders_log_path()
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +138,12 @@ def _audit(event: str, payload: dict) -> None:
         with open(p, "a") as f:
             f.write(json.dumps(line, default=str) + "\n")
     except OSError as e:
+        if required:
+            raise OrderRejected(
+                f"audit log {p} is unwritable ({e}) — refusing to submit an "
+                "order that would leave no audit trail. Fix the filesystem "
+                "(or point ORDERS_LOG_PATH at a writable location) first."
+            ) from e
         log.warning("orders audit log write failed: %s", e)
 
 
@@ -153,6 +184,87 @@ def _today_submit_count() -> int:
     except OSError:
         return 0
     return n
+
+
+def mandatory_caps() -> tuple[float, int]:
+    """The caps enforced unconditionally at this, the venue boundary:
+    ``(max_stake_dollars, max_orders_per_day)``.
+
+    Read from ``LIVE_MAX_STAKE_DOLLARS`` / ``LIVE_MAX_ORDERS_PER_DAY`` — the
+    same knobs ``execution._live_cfg_from_env`` uses — falling back to this
+    module's defaults. These are the *outer* limits: a caller (LiveBroker,
+    the Kelly page) may configure itself stricter, never looser. Raising
+    them is an explicit env change, i.e. an operator action.
+    """
+    stake = DEFAULT_MAX_STAKE_DOLLARS
+    raw = os.getenv("LIVE_MAX_STAKE_DOLLARS", "").strip()
+    if raw:
+        try:
+            stake = float(raw)
+        except ValueError:
+            log.warning("ignoring bad LIVE_MAX_STAKE_DOLLARS=%r", raw)
+    per_day = DEFAULT_MAX_ORDERS_PER_DAY
+    raw_n = os.getenv("LIVE_MAX_ORDERS_PER_DAY", "").strip()
+    if raw_n:
+        try:
+            per_day = int(raw_n)
+        except ValueError:
+            log.warning("ignoring bad LIVE_MAX_ORDERS_PER_DAY=%r", raw_n)
+    return stake, per_day
+
+
+#: How long a submission waits for the reservation lock before refusing.
+SUBMIT_LOCK_TIMEOUT_S = 10.0
+
+
+@contextlib.contextmanager
+def _submission_lock():
+    """Exclusive cross-process lock for the daily-cap check + submit audit.
+
+    The daily order cap was a read-check-write race: two daemons could both
+    read ``_today_submit_count() == cap-1`` and both submit. Holding this
+    lock across *count check → submit-audit append* makes the appended
+    ``submit`` row an atomic reservation — the next process's count sees it.
+
+    **Fails closed**: if the lock cannot be taken within
+    :data:`SUBMIT_LOCK_TIMEOUT_S` the order is refused. This is the opposite
+    of ``atomic_io.locked`` (which proceeds unlocked on timeout so a fill
+    that already happened can still be recorded); here nothing has been
+    placed yet, so refusing is the safe side.
+
+    The HTTP call happens *outside* the lock — a slow venue response must
+    not serialize every other process's submissions behind it.
+    """
+    if fcntl is None:  # pragma: no cover - project targets Linux
+        yield
+        return
+    lp = Path(str(_orders_log_path()) + ".lock")
+    try:
+        lp.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(lp, os.O_RDWR | os.O_CREAT, 0o600)
+    except OSError as e:
+        raise OrderRejected(
+            f"cannot open the order-submission lock {lp} ({e}) — refusing "
+            "to submit without the daily-cap reservation.") from e
+    deadline = time.monotonic() + SUBMIT_LOCK_TIMEOUT_S
+    try:
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise OrderRejected(
+                        f"timed out after {SUBMIT_LOCK_TIMEOUT_S:.0f}s waiting "
+                        "for the order-submission lock — another process may "
+                        "be stuck mid-submission; refusing to bypass the "
+                        "daily-cap reservation.") from None
+                time.sleep(0.05)
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
 
 
 def pre_flight_check(
@@ -401,10 +513,40 @@ def place_limit_order(
         count=count, price_cents=limit_price_cents,
     )
 
-    # Audit *before* the call so a crash mid-request leaves a trail.
-    _audit("submit", {"body": body, "intent": {
-        "side": side_l, "action": action_l,
-        "limit_price_cents": int(limit_price_cents)}})
+    # ── Mandatory venue-boundary caps ──────────────────────────────────
+    # Enforced HERE, not only in pre_flight_check, so no caller — present
+    # or future — can place an order these caps would block by simply not
+    # running the advisory pre-flight. pre_flight_check remains the richer
+    # check (drawdown, distance-from-mid, bankroll %) for callers that have
+    # that context; this is the floor every order must clear.
+    max_stake, max_per_day = mandatory_caps()
+    if action_l == "buy":
+        stake_dollars = (count * limit_price_cents) / 100.0
+        if stake_dollars > max_stake:
+            raise OrderRejected(
+                f"stake ${stake_dollars:.2f} exceeds the per-order cap "
+                f"${max_stake:.2f} (LIVE_MAX_STAKE_DOLLARS). Reduce count "
+                "or raise the cap explicitly.")
+        # Sells are exempt from the stake cap by design: an exit of an
+        # existing position reduces risk and must not be blocked by its size.
+
+    # Daily-cap reservation. The count check and the audit append happen
+    # under one cross-process lock so concurrent processes cannot both
+    # observe cap-1 and both submit; the appended `submit` row *is* the
+    # reservation (it is counted whether or not the HTTP call later
+    # succeeds — conservative, and unchanged from previous semantics).
+    # The audit write is required (fail-closed): see _audit.
+    with _submission_lock():
+        today_n = _today_submit_count()
+        if today_n >= max_per_day:
+            raise OrderRejected(
+                f"daily order cap reached ({today_n}/{max_per_day}). "
+                "Anti-runaway guard — wait until UTC midnight or raise "
+                "LIVE_MAX_ORDERS_PER_DAY explicitly.")
+        # Audit *before* the call so a crash mid-request leaves a trail.
+        _audit("submit", {"body": body, "intent": {
+            "side": side_l, "action": action_l,
+            "limit_price_cents": int(limit_price_cents)}}, required=True)
     try:
         resp = ka.authed_post(_ORDERS_ENDPOINT, body)
     except Exception as e:
@@ -518,7 +660,7 @@ def cash_out_position(
 
     _audit("cashout_submit", {"body": body, "intent": {
         "side": side_l, "action": "sell",
-        "limit_price_cents": int(current_bid_cents)}})
+        "limit_price_cents": int(current_bid_cents)}}, required=True)
     try:
         resp = ka.authed_post(_ORDERS_ENDPOINT, body)
     except Exception as e:
@@ -625,7 +767,8 @@ def place_take_profit(
 
     _audit("tp_submit", {"body": body, "current_bid_cents": current_bid_cents,
                          "intent": {"side": side_l, "action": "sell",
-                                    "limit_price_cents": int(sell_price_cents)}})
+                                    "limit_price_cents": int(sell_price_cents)}},
+           required=True)
     try:
         resp = ka.authed_post(_ORDERS_ENDPOINT, body)
     except Exception as e:
@@ -728,6 +871,7 @@ __all__ = [
     "OrderRejected",
     "is_live_enabled",
     "is_trading_enabled",
+    "mandatory_caps",
     "pre_flight_check",
     "place_limit_order",
     "place_take_profit",

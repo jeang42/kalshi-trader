@@ -115,16 +115,18 @@ class TestOwnerProfileGuard:
         monkeypatch.delenv("LIVE_TRADING_PROFILES", raising=False)
         assert ka.authorized_profiles() == {"jeff"}
 
-    def test_owner_check_allows_when_profiles_unavailable(self, monkeypatch):
-        # CLI / tests without a profile system — fall through to True so
-        # scripts that don't run inside Streamlit aren't blocked.
+    def test_owner_check_fails_closed_when_profiles_unavailable(self, monkeypatch):
+        # A failed profile lookup (unreadable active-profile file, broken
+        # import) must deny authorization, not grant it: this gate feeds
+        # is_configured(), which the order path depends on. (Until
+        # 2026-11-04 this fell through to True; release audit P0-A.)
         from pm.core import profiles
 
         def boom():
             raise RuntimeError("no profiles here")
 
         monkeypatch.setattr(profiles, "active_profile", boom)
-        assert ka.is_owner_profile_active() is True
+        assert ka.is_owner_profile_active() is False
 
 
 # ---------------------------------------------------------------------------

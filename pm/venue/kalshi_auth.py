@@ -134,11 +134,18 @@ def is_owner_profile_active() -> bool:
     try:
         from pm.core import profiles
         return profiles.active_profile() in authorized_profiles()
-    except Exception:
-        # If profiles aren't available (CLI scripts, tests), allow auth
-        # — protection at the UI layer is what we care about. CLI users
-        # have explicit shell access already.
-        return True
+    except Exception as e:
+        # Fail CLOSED. This gate is part of is_configured(), which every
+        # authed call — including order placement — depends on. Until
+        # 2026-11-04 it returned True here ("CLI users have shell access
+        # already"), but the except also swallows runtime failures such as
+        # an unreadable active-profile file, which silently authorized
+        # whatever profile happened to be active. A CLI that legitimately
+        # has no profile system can set POLYMARKET_ACTIVE_PROFILE to an
+        # authorized profile instead.
+        log.warning("profile authorization check failed (%s) — treating the "
+                    "active profile as NOT authorized (fail-closed)", e)
+        return False
 
 
 @contextlib.contextmanager
