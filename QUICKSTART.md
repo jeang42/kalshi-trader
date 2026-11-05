@@ -14,7 +14,7 @@
 
 ## What this is
 
-A local **decision support tool** for analyzing Polymarket prediction markets. You run it on your own machine; it reads the public Polymarket APIs (no auth, no trading). It does **not** place orders, and it does **not** tell you what to buy.
+A local **decision support tool** for analyzing Kalshi and Polymarket prediction markets. You run it on your own machine; it reads the public Polymarket APIs (no auth, no trading). It does **not** place orders, and it does **not** tell you what to buy.
 
 What it does help you do:
 

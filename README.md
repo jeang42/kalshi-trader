@@ -11,8 +11,8 @@ independent gates — place real Kalshi orders.
 
 > ⚠️ **This software can trade real money, and trading prediction markets can
 > lose it — up to your entire stake.** The live-order path is off by default
-> and triple-gated, but if you enable it, orders are placed with your real
-> funds, by unattended automation, using strategies this repo's own research
+> and triple-gated, but if you enable it, orders are placed on **Kalshi** with
+> your real funds, by unattended automation, using strategies this repo's own research
 > record shows have **no demonstrated edge**. Read
 > [Disclaimers & risk](#disclaimers--risk) and the
 > [live-execution runbook](docs/live-execution-adapter.md) in full before
@@ -236,9 +236,11 @@ For anything else: [nexurite.ai](https://nexurite.ai).
 
 ## Disclaimers & risk
 
-- **This software can place real-money trades.** With a Kalshi API key
-  configured and the live gates deliberately enabled, strategy daemons place
-  actual orders with your actual funds — unattended. Everything can go wrong
+- **This software can place real-money trades — on Kalshi only.** With a
+  Kalshi API key configured and the live gates deliberately enabled, strategy
+  daemons place actual Kalshi orders with your actual funds — unattended.
+  Polymarket was the project's original analysis target but is supported
+  **read-only**: no Polymarket order or wallet code exists in this repo. Everything can go wrong
   that goes wrong with unattended trading software: bugs, bad fills, venue
   API changes, network failures mid-order, and strategies that simply lose.
   **You can lose your entire stake.** Positions in binary markets routinely
