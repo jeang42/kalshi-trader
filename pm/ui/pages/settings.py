@@ -135,7 +135,7 @@ if _active == "sandbox":
     st.warning(
         "This will delete the sandbox profile's `portfolio.json`, "
         "`forecasts.json`, `alerts.json`, and `settings.json` and start "
-        "fresh. **Real profiles (jeff, dex) are untouched.**"
+        "fresh. **Real profiles (jeff, user2) are untouched.**"
     )
     confirm = st.checkbox("I understand this wipes all sandbox data")
     if st.button("Wipe sandbox now", type="primary", disabled=not confirm):

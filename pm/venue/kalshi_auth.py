@@ -60,7 +60,7 @@ _PRIVATE_KEY_PATH_ENV = "KALSHI_PRIVATE_KEY_PATH"
 # is the primary human account; additionally, any profile in
 # LIVE_TRADING_PROFILES (the agentic-arm allow-list) is authorized — this is
 # what lets multiple live daemons each authenticate against the one account
-# while paper-trading profiles (sandbox, dex, un-listed agentic_*) stay
+# while paper-trading profiles (sandbox, user2, un-listed agentic_*) stay
 # locked out. The real Kalshi account belongs to one human, so authorization
 # is deliberately an explicit allow-list, never "any profile".
 _OWNER_PROFILE_ENV = "KALSHI_OWNER_PROFILE"

@@ -39,10 +39,11 @@ case. 401 responses don't distinguish missing from wrong tokens.
   release"): no `.env`, `*.pem`, `*.key`, database, or `data/` file ever
   committed; pattern grep (AWS/GitHub/Slack/OpenAI key shapes, PEM headers)
   over every commit: no hits.
-- No emails, no `/home/<user>` paths, no hostnames. Remaining personal
-  residue (optional cleanup, see checklist): fallback LAN IPs
-  `192.168.0.50/.51` in the HDHomeRun/feed-latency modules, and the `dex`
-  example profile name.
+- No emails, no `/home/<user>` paths, no hostnames. The `dex` example
+  profile name was removed on the author's instruction (renamed to the
+  neutral `user2`). Remaining personal residue (optional cleanup, see
+  checklist): fallback LAN IPs `192.168.0.50/.51` in the
+  HDHomeRun/feed-latency modules.
 
 ## Injection / unsafe-input review
 

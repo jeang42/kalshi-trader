@@ -264,7 +264,7 @@ def paper_trading_banner(show_help: bool = True) -> None:
 
     No-op if not in sandbox. Pages that take user actions (Kelly Sizer,
     Portfolio, Alerts) call this at the top so it's impossible to confuse a
-    sandbox session with the real `jeff` or `dex` profiles.
+    sandbox session with the real `jeff` or `user2` profiles.
 
     If `show_help=True`, also includes an expander explaining the paper-
     trading workflow. Set to False on pages where the explanation would be

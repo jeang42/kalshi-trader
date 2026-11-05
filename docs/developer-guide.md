@@ -1290,7 +1290,7 @@ Multi-user profile system, Option A from the design discussion: file-based, sing
 
 ```python
 PROFILES_ROOT = Path(__file__).parent / "data"
-DEFAULT_PROFILES = ["jeff", "dex", "sandbox"]
+DEFAULT_PROFILES = ["jeff", "user2", "sandbox"]
 DEFAULT_ACTIVE_PROFILE = "jeff"
 PROFILE_FILE_KINDS = ("portfolio", "forecasts", "alerts", "settings")
 

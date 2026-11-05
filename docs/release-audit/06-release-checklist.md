@@ -26,8 +26,11 @@
   mirrors README "Maintenance status") so GitHub's security tab isn't blank.
 - [ ] Replace the fallback tuner IPs `192.168.0.50/.51` with RFC 5737
   documentation addresses or require `HDHR_IP` to be set (S-4).
-- [ ] Author sign-off on the `dex` example profile name (S-5), or rename to
-  a neutral placeholder.
+- [x] Author sign-off on the `dex` example profile name (S-5) — author chose
+  removal; renamed to the neutral `user2` everywhere (code, tests, docs,
+  CHANGELOG). Note for a redeploying fork: an existing `data/dex/` profile
+  directory keeps working (profiles are directory-driven); only the shipped
+  default-profile name changed.
 
 ## Optional improvements (fine to leave for forks)
 

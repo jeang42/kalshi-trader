@@ -79,7 +79,7 @@ def _(warn):
     from pm.core import profiles
     profiles.initialize_profiles()
     have = set(profiles.list_profiles())
-    expect_min = {"jeff", "dex", "sandbox"}
+    expect_min = {"jeff", "user2", "sandbox"}
     assert expect_min.issubset(have), \
         f"missing default profiles: {expect_min - have}"
 
