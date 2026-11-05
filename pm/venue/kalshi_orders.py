@@ -76,6 +76,40 @@ class OrderRejected(RuntimeError):
     etc.)."""
 
 
+class OrderOutcomeUnknown(RuntimeError):
+    """The submission failed at the transport layer with NO response from
+    Kalshi — a timeout or dropped connection. The order may or may not
+    have been accepted; treating this as "not placed" risks an unmanaged
+    real position, and resubmitting risks a double fill.
+
+    Carries ``client_order_id`` — the one handle that survives a failed
+    request. Reconcile against the venue (resting orders + fills carry the
+    client_order_id) before assuming anything; ``LiveBroker`` does this
+    automatically, manual callers should check the Orders page.
+
+    Distinct from both :class:`OrderRejected` (never sent — confirmed) and
+    ``requests.HTTPError`` (sent and answered — confirmed rejection).
+    """
+
+    def __init__(self, message: str, *, client_order_id: str):
+        super().__init__(message)
+        self.client_order_id = client_order_id
+
+
+def _classify_submit_error(e: Exception) -> str:
+    """``"unknown"`` when the venue never answered (transport failure —
+    the order may still have landed), ``"rejected"`` when the venue
+    answered (``HTTPError`` — a response exists by definition) or the
+    request was never sent (local error, open circuit breaker)."""
+    import requests
+
+    if (isinstance(e, requests.RequestException)
+            and not isinstance(e, requests.HTTPError)
+            and getattr(e, "response", None) is None):
+        return "unknown"
+    return "rejected"
+
+
 # ---------------------------------------------------------------------------
 # Live-enabled flag
 # ---------------------------------------------------------------------------
@@ -577,8 +611,18 @@ def place_limit_order(
                 "`exchange_index` against portfolio/balance's "
                 "balance_breakdown, and move funds with an intra-exchange "
                 "transfer before trading it.", ticker)
+        outcome = _classify_submit_error(e)
         _audit("error", {"client_order_id": coid, "error": str(e),
-                          "response_body": resp_body})
+                          "response_body": resp_body, "outcome": outcome})
+        if outcome == "unknown":
+            # The venue never answered. The order may be resting or filled.
+            # Do NOT resubmit on this id's behalf without reconciling first.
+            raise OrderOutcomeUnknown(
+                f"submission of {ticker} {side_l} {action_l} {count}x@"
+                f"{limit_price_cents}¢ got no response from Kalshi ({e}). "
+                f"The order MAY have been accepted — reconcile "
+                f"client_order_id={coid} against resting orders and fills "
+                "before retrying.", client_order_id=coid) from e
         raise
     _audit("accepted", {"client_order_id": coid, "response": resp})
     log.info("Order placed: %s %s %sx%s@%s (coid=%s)",
@@ -674,8 +718,15 @@ def cash_out_position(
                 # str(e) does not. Losing it silently makes an order failure
                 # much harder to diagnose after the fact.
                 log.warning("could not read the error response body: %s", read_err)
+        outcome = _classify_submit_error(e)
         _audit("cashout_error", {"client_order_id": coid, "error": str(e),
-                                   "response_body": resp_body})
+                                   "response_body": resp_body, "outcome": outcome})
+        if outcome == "unknown":
+            raise OrderOutcomeUnknown(
+                f"cash-out of {ticker} {side_l} {count}x@{current_bid_cents}¢ "
+                f"got no response from Kalshi ({e}). The sell MAY have been "
+                f"accepted — reconcile client_order_id={coid} before retrying.",
+                client_order_id=coid) from e
         raise
     _audit("cashout_accepted", {"client_order_id": coid, "response": resp})
     log.info("Cash-out placed: %s %s sell %sx@%s (coid=%s)",
@@ -782,8 +833,15 @@ def place_take_profit(
                 # str(e) does not. Losing it silently makes an order failure
                 # much harder to diagnose after the fact.
                 log.warning("could not read the error response body: %s", read_err)
+        outcome = _classify_submit_error(e)
         _audit("tp_error", {"client_order_id": coid, "error": str(e),
-                              "response_body": resp_body})
+                              "response_body": resp_body, "outcome": outcome})
+        if outcome == "unknown":
+            raise OrderOutcomeUnknown(
+                f"take-profit on {ticker} {side_l} {count}x@{sell_price_cents}¢ "
+                f"got no response from Kalshi ({e}). The sell MAY have been "
+                f"accepted — reconcile client_order_id={coid} before retrying.",
+                client_order_id=coid) from e
         raise
     _audit("tp_accepted", {"client_order_id": coid, "response": resp})
     log.info("Take-profit placed: %s %s sell %sx@%s (coid=%s)",
@@ -804,7 +862,11 @@ def cancel_order(order_id: str) -> dict:
     try:
         resp = ka.authed_delete(f"{_ORDERS_ENDPOINT}/{order_id}")
     except Exception as e:
-        _audit("cancel_error", {"order_id": order_id, "error": str(e)})
+        # A failed cancellation does NOT mean the order is gone: a timeout
+        # may have cancelled it anyway, and an error may have left it
+        # resting. Callers must re-check resting orders, never assume.
+        _audit("cancel_error", {"order_id": order_id, "error": str(e),
+                                 "outcome": _classify_submit_error(e)})
         raise
     _audit("cancel_accepted", {"order_id": order_id, "response": resp})
     return resp
@@ -869,6 +931,7 @@ def get_resting_orders(*, ticker: str | None = None,
 
 __all__ = [
     "OrderRejected",
+    "OrderOutcomeUnknown",
     "is_live_enabled",
     "is_trading_enabled",
     "mandatory_caps",

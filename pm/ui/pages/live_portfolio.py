@@ -296,6 +296,12 @@ else:
                         st.cache_data.clear()
                     except ko.OrderRejected as e:
                         st.error(f"Rejected: {e}")
+                    except ko.OrderOutcomeUnknown as e:
+                        st.warning(
+                            f"⚠️ **Outcome UNKNOWN** — Kalshi did not answer; "
+                            f"the sell may still have been accepted. Check "
+                            f"the Orders page for client order id "
+                            f"`{e.client_order_id}` before retrying.\n\n{e}")
                     except Exception as e:
                         body = ""
                         if hasattr(e, "response") and e.response is not None:
@@ -386,6 +392,13 @@ else:
                             st.cache_data.clear()
                         except ko.OrderRejected as e:
                             st.error(f"Rejected: {e}")
+                        except ko.OrderOutcomeUnknown as e:
+                            st.warning(
+                                f"⚠️ **Outcome UNKNOWN** — Kalshi did not "
+                                f"answer; the sell may still have been "
+                                f"accepted. Check the Orders page for client "
+                                f"order id `{e.client_order_id}` before "
+                                f"retrying.\n\n{e}")
                         except Exception as e:
                             body = ""
                             if hasattr(e, "response") and e.response is not None:

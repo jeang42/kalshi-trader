@@ -44,7 +44,15 @@ LIVE_PROFILES_ENV = "LIVE_TRADING_PROFILES"
 @dataclass
 class OrderResult:
     """Outcome of a buy/sell. ``status`` ∈ {paper, filled, partial, resting,
-    rejected, error, settle}. ``avg_fill_price`` is in dollars for our side."""
+    rejected, error, settle}. ``avg_fill_price`` is in dollars for our side.
+
+    ``requested_count`` is what the caller asked for; ``submitted_count`` is
+    what was actually sent to the venue after flooring to whole contracts
+    and clamping to the stake cap (0 when nothing was submitted). The two
+    differ whenever an order was resized — ``status == "filled"`` means the
+    SUBMITTED count filled, not necessarily the requested one, so consumers
+    sizing follow-ups must read ``submitted_count``/``filled_count``, never
+    assume ``requested_count`` went out."""
 
     ok: bool
     status: str
@@ -52,6 +60,7 @@ class OrderResult:
     side: str            # "yes" | "no"
     action: str          # "buy" | "sell"
     requested_count: float
+    submitted_count: float = 0.0
     filled_count: float = 0.0
     avg_fill_price: float | None = None
     order_id: str | None = None
@@ -166,8 +175,8 @@ class PaperBroker:
                    shares=count, price=price)
         return OrderResult(ok=True, status="paper", ticker=ticker,
                            side=_side_of(outcome), action="buy",
-                           requested_count=count, filled_count=count,
-                           avg_fill_price=price)
+                           requested_count=count, submitted_count=count,
+                           filled_count=count, avg_fill_price=price)
 
     def sell(self, *, question: str, ticker: str, outcome: str,
              count: float, price: float,
@@ -177,8 +186,8 @@ class PaperBroker:
                     shares=count, price=price)
         return OrderResult(ok=True, status="paper", ticker=ticker,
                            side=_side_of(outcome), action="sell",
-                           requested_count=count, filled_count=count,
-                           avg_fill_price=price)
+                           requested_count=count, submitted_count=count,
+                           filled_count=count, avg_fill_price=price)
 
     def get_positions(self) -> pd.DataFrame:
         return pf.get_positions()
@@ -348,6 +357,7 @@ class LiveBroker:
         # place_limit_order so that, if the call raises, we still know what to
         # look for — see the reconciliation below.
         coid = ko._make_client_order_id(ticker)
+        res.submitted_count = int_count
         try:
             resp = ko.place_limit_order(
                 ticker=ticker, side=side, action=action,
@@ -363,7 +373,22 @@ class LiveBroker:
             log.error("place_limit_order failed for %s: %s", ticker, e)
             recovered = self._reconcile_after_error(ticker, coid)
             if recovered is None:
-                res.status, res.detail = "error", f"place failed: {e}"
+                res.status = "error"
+                if isinstance(e, ko.OrderOutcomeUnknown):
+                    # The venue never answered AND reconciliation couldn't
+                    # find the order — but reconciliation itself can fail
+                    # transiently, so this is still not a confirmed "not
+                    # placed". Say so, with the id to look for; leave
+                    # submitted_count at int_count (the request DID go out).
+                    res.detail = (f"place failed with UNKNOWN outcome: {e}; "
+                                  f"reconciliation found nothing for "
+                                  f"client_order_id={coid}, but verify before "
+                                  "resubmitting")
+                else:
+                    # Confirmed failure: rejected locally, rejected by the
+                    # venue, or never sent (open circuit breaker).
+                    res.detail = f"place failed: {e}"
+                    res.submitted_count = 0
                 return res
             log.warning(
                 "RECOVERED an orphaned order for %s: the submission raised (%s) "
@@ -397,7 +422,14 @@ class LiveBroker:
             try:
                 ko.cancel_order(order_id)
             except Exception as e:  # noqa: BLE001
+                # A failed cancel is NOT a cancelled order: the remainder
+                # may still be resting and can still fill. Surface that on
+                # the result so the caller doesn't treat the position as
+                # finalized at `filled`.
                 log.warning("cancel remainder failed for %s: %s", order_id, e)
+                res.detail = (res.detail + "; " if res.detail else "") + (
+                    f"cancel of unfilled remainder failed ({e}) — order "
+                    f"{order_id} may still be resting")
         return res
 
     @staticmethod
@@ -472,6 +504,7 @@ class LiveBroker:
             log.error("resting TP failed for %s: %s", ticker, e)
             return res
         res.ok, res.status = True, "resting"
+        res.submitted_count = int_count
         res.order_id = _extract_order_id(resp)
         res.avg_fill_price = limit_cents / 100.0
         log.info("RESTING TP %s sell %dx@%dc (order=%s)",
