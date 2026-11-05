@@ -31,6 +31,14 @@ UNIT_SRC="$REPO_DIR/deploy/systemd"
 UNIT_DST="${SYSTEMD_USER_DIR:-$HOME/.config/systemd/user}"
 CRON_FILE="$REPO_DIR/deploy/cron/crontab.txt"
 
+# The unit files in the repo are machine-neutral: they reference the
+# placeholder repo path below instead of any real home directory. Install
+# renders the placeholder to THIS checkout; capture renders real paths back
+# to the placeholder so a personal username never lands in version control.
+PLACEHOLDER_REPO="/home/USER/Coding/kalshi-trader"
+render_install() { sed -e "s|$PLACEHOLDER_REPO|$REPO_DIR|g" -e "s|/home/USER|$HOME|g" "$1"; }
+render_capture() { sed -e "s|$REPO_DIR|$PLACEHOLDER_REPO|g" -e "s|$HOME|/home/USER|g" "$1"; }
+
 MODE="dry-run"
 case "${1:-}" in
     --install) MODE="install" ;;
@@ -61,10 +69,12 @@ if [[ "$MODE" == "capture" ]]; then
                 #  fade-retail/fade-props retired 2026-08-23; fade-nearclose/
                 #  back-nearclose retired 2026-08-24 — the fade-*/back-* globs
                 #  now catch nothing live, kept for a future arm.)
-                cp -p "$u" "$UNIT_SRC/"; n=$((n+1)) ;;
+                render_capture "$u" > "$UNIT_SRC/$name"; n=$((n+1)) ;;
         esac
     done
-    crontab -l > "$CRON_FILE" 2>/dev/null || true
+    if crontab -l >/dev/null 2>&1; then
+        crontab -l | sed -e "s|$REPO_DIR|$PLACEHOLDER_REPO|g" -e "s|$HOME|/home/USER|g" > "$CRON_FILE"
+    fi
     echo "captured $n unit(s) and the crontab into the repo."
     echo "Review with 'git diff deploy/' before committing — unit files can"
     echo "contain paths and flags that changed for a reason."
@@ -73,18 +83,21 @@ fi
 
 # ─── dry-run / install ────────────────────────────────────────────────────
 changed=0
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
 for f in "$UNIT_SRC"/*.service "$UNIT_SRC"/*.timer; do
     [[ -e "$f" ]] || continue
     name="$(basename "$f")"
     dst="$UNIT_DST/$name"
+    render_install "$f" > "$tmp"
     if [[ ! -e "$dst" ]]; then
         echo "  NEW      $name"; changed=$((changed+1))
-        [[ "$MODE" == "install" ]] && { mkdir -p "$UNIT_DST"; cp -p "$f" "$dst"; }
-    elif ! cmp -s "$f" "$dst"; then
+        [[ "$MODE" == "install" ]] && { mkdir -p "$UNIT_DST"; cp "$tmp" "$dst"; chmod 644 "$dst"; }
+    elif ! cmp -s "$tmp" "$dst"; then
         echo "  MODIFIED $name"; changed=$((changed+1))
         if [[ "$MODE" == "install" ]]; then
             cp -p "$dst" "$dst.bak.$(date -u +%Y%m%dT%H%M%SZ)"
-            cp -p "$f" "$dst"
+            cp "$tmp" "$dst"; chmod 644 "$dst"
         fi
     fi
 done
