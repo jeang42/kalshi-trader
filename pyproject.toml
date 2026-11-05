@@ -45,8 +45,9 @@ dev = [
 ]
 
 [project.urls]
-Repository = "https://github.com/jeang42/polymarket"
-Issues = "https://github.com/jeang42/polymarket/issues"
+Homepage = "https://nexurite.ai"
+Repository = "https://github.com/jeang42/kalshi-trader"
+Issues = "https://github.com/jeang42/kalshi-trader/issues"
 
 # ---------------------------------------------------------------------------
 # pytest

@@ -233,4 +233,4 @@ transact, not just the analytical ones. Tests cannot reach the network
 ## License
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
-Copyright 2026 Jeff Angelcyk.
+Copyright 2026 [Jeff Angelcyk](https://nexurite.ai).
