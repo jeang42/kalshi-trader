@@ -1,0 +1,14 @@
+[Unit]
+Description=Favorite-hold arm — buy moderate-favorite side (consensus 0.55-0.70), hold to resolution (paper)
+After=network.target baseball-live.service kalshi-ws.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python longshot_scalper.py --mode favorite --profile agentic_favorite_hold --forecast-source consensus --loop --interval 15
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

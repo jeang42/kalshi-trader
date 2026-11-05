@@ -1,0 +1,6 @@
+[Unit]
+Description=Deliberately failing unit to prove the alert hook fires
+OnFailure=polymarket-alert@%n.service
+[Service]
+Type=oneshot
+ExecStart=/bin/false

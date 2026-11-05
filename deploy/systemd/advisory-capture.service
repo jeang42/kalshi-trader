@@ -1,0 +1,17 @@
+[Unit]
+Description=Advisory capture — NHC advisory events + storm-market book paths (measure-first, read-only)
+After=network-online.target
+OnFailure=polymarket-alert@%n.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+# Boot stagger (see the other daemon units): spaced so first cycles don't
+# 429 each other. 24s slot was free.
+ExecStartPre=/bin/sleep 24
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.capture.advisory_capture --loop
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

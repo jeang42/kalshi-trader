@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section>
+  <h1 class="date-current">Stats & insights</h1>
+</section>
+
+<section class="sidebar-blocks">
+
+  <div class="block">
+    <h2 class="section-title">Today's model edges</h2>
+    <p class="muted">Model P(YES) vs market price, |gap| ≥ 3pp.</p>
+    {% if edges_today %}
+      <table class="ratings-table">
+        <thead><tr><th>Market</th><th>Model</th><th>Mkt</th><th>Gap</th><th>Side</th></tr></thead>
+        <tbody>
+          {% for e in edges_today %}
+            <tr>
+              <td>{{ e.question[:36] }}</td>
+              <td>{{ (e.model_implied * 100)|round|int }}%</td>
+              <td>{{ (e.market_yes_price * 100)|round|int }}%</td>
+              <td><strong>{{ (e.gap * 100)|round|int }}pp</strong></td>
+              <td>{{ e.direction }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No edges right now (no open WNBA markets, or model agrees with the market).</p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Top offenses (PPG)</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>PPG</th><th>Record</th></tr></thead>
+      <tbody>
+        {% for s in offense %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(s.abbreviation) }}" class="mini-logo" alt=""><strong>{{ s.abbreviation }}</strong></td>
+            <td>{{ "%.1f"|format(s.off_ppg) }}</td>
+            <td>{{ s.wins }}-{{ s.losses }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Best defenses (PPG allowed)</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>PPG allowed</th><th>Record</th></tr></thead>
+      <tbody>
+        {% for s in defense %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(s.abbreviation) }}" class="mini-logo" alt=""><strong>{{ s.abbreviation }}</strong></td>
+            <td>{{ "%.1f"|format(s.def_ppg) }}</td>
+            <td>{{ s.wins }}-{{ s.losses }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Sidecar stats</h2>
+    <dl class="kv">
+      <dt>Season</dt><dd>{{ stats.season }}</dd>
+      <dt>Teams rated</dt><dd>{{ stats.rated_teams }}/{{ stats.teams }}</dd>
+      <dt>Settled predictions</dt><dd>{{ stats.brier_n }}</dd>
+      <dt>Brier score</dt><dd>{% if stats.brier %}{{ "%.4f"|format(stats.brier) }}{% else %}—{% endif %}</dd>
+    </dl>
+  </div>
+
+</section>
+
+{% endblock %}

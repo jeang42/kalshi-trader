@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the polymarket fleet health digest daily
+
+[Timer]
+OnCalendar=*-*-* 13:00:00
+# Survive the machine being asleep or off at the scheduled time.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

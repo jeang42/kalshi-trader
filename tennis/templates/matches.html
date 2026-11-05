@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section>
+  <h1 class="date-current">Recent matches</h1>
+  <p class="muted">Finished matches fed into the Elo ladder, newest first.</p>
+  {% if not matches %}
+    <div class="no-games">No matches recorded yet. Run the backfill.</div>
+  {% else %}
+    <table class="ratings-table">
+      <thead><tr><th>Date</th><th>Tour</th><th>Tournament</th><th>Round</th><th>Match</th><th>Winner</th></tr></thead>
+      <tbody>
+        {% for m in matches %}
+          <tr>
+            <td>{{ m.date | dt }}</td>
+            <td>{{ m.tour|upper }}</td>
+            <td>{{ m.tournament }}</td>
+            <td>{{ m.round_name }}</td>
+            <td>{{ m.p1_name or m.p1_id }} vs {{ m.p2_name or m.p2_id }}</td>
+            <td><strong>{% if m.winner_id == m.p1_id %}{{ m.p1_name or m.p1_id }}{% else %}{{ m.p2_name or m.p2_id }}{% endif %}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+
+{% endblock %}

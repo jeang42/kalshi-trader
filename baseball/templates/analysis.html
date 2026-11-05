@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}⚾ Lead-Lag Analysis{% endblock %}
+{% block content %}
+
+<h1 class="page-title">Lead-lag analysis</h1>
+
+<div class="block" style="margin-top:0;">
+  <h2 class="section-title">📊 Data coverage</h2>
+  <dl class="kv">
+    <dt>Total plays captured</dt>
+    <dd>{{ "{:,}".format(coverage.total_plays) }}</dd>
+    <dt>Total MLB book snapshots</dt>
+    <dd>{{ "{:,}".format(coverage.total_mlb_book_snapshots) }}</dd>
+    <dt>Book collection started</dt>
+    <dd>
+      {% if coverage.book_collection_started_iso %}
+        {{ coverage.book_collection_started_iso | dt }}
+      {% else %}
+        not started
+      {% endif %}
+    </dd>
+  </dl>
+  <p class="muted" style="margin-top:8px;">
+    The book poller is forward-only. Plays from before book collection started
+    have no paired data — they're useful for play-statistics analysis but not
+    for lead-lag. Real lead-lag signals need ≥1 week of paired data. Until
+    then, this page shows what we have but its conclusions are weak.
+  </p>
+</div>
+
+<section class="insight-grid">
+
+  <div class="block">
+    <h2 class="section-title">⏱️ Reaction rates by event type</h2>
+    {% if not summaries or summaries|map(attribute='n_played_with_book')|sum == 0 %}
+      <p class="muted">
+        No paired (play, book) pairs yet. Check back after a few games have
+        finished with both pollers running.
+      </p>
+    {% else %}
+      <table class="ratings-table">
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Plays</th>
+            <th>Paired</th>
+            <th>Reacted</th>
+            <th>React %</th>
+            <th>Median delay</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in summaries %}
+            <tr>
+              <td><strong>{{ s.event_type }}</strong></td>
+              <td>{{ "{:,}".format(s.n_plays) }}</td>
+              <td>{{ s.n_played_with_book }}</td>
+              <td>{{ s.n_reacted }}</td>
+              <td>
+                {% if s.reaction_pct is not none %}
+                  {{ "{:.0%}".format(s.reaction_pct) }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if s.median_reaction_seconds %}
+                  {{ "{:.0f}s".format(s.median_reaction_seconds) }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px; font-size:11px;">
+        "Reacted" = book midpoint moved ≥2% within 10 min after the play.
+        Population restricted to plays that ACTUALLY changed the score
+        (RBIs, runs scored) — non-scoring plays in the same time window
+        get correctly excluded. "—" means sample size {% raw %}<{% endraw %} 5
+        — not enough to compute honestly.
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🎲 Reactions by game-situation (leverage)</h2>
+    {% if not situations %}
+      <p class="muted">No data yet.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead>
+          <tr>
+            <th>Situation</th>
+            <th>Plays</th>
+            <th>Paired</th>
+            <th>Reacted</th>
+            <th>React %</th>
+            <th>Median delay</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in situations %}
+            <tr>
+              <td><strong>{{ s.situation }}</strong></td>
+              <td>{{ "{:,}".format(s.n_plays) }}</td>
+              <td>{{ s.n_played_with_book }}</td>
+              <td>{{ s.n_reacted }}</td>
+              <td>
+                {% if s.reaction_pct is not none %}
+                  {{ "{:.0%}".format(s.reaction_pct) }}
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td>
+                {% if s.median_reaction_seconds %}
+                  {{ "{:.0f}s".format(s.median_reaction_seconds) }}
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px; font-size:11px;">
+        Situation filters use standard sabermetric heuristics:
+        <strong>late_and_close</strong> = 7th+ inning, within 1 run (or
+        tying run on base); <strong>high_leverage</strong> = bases loaded
+        OR RISP in close score; <strong>risp</strong> = runner on 2nd/3rd;
+        <strong>garbage_time</strong> = late blowout (5+ run diff).
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">⚾ Base-out state distribution (scoring plays)</h2>
+    {% if not base_out_distribution %}
+      <p class="muted">No data yet.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead><tr><th>State</th><th>Plays</th></tr></thead>
+        <tbody>
+          {% for state, n in base_out_distribution %}
+            <tr>
+              <td><code>{{ state }}</code></td>
+              <td><strong>{{ "{:,}".format(n) }}</strong></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px; font-size:11px;">
+        Format: <code>bases_outs</code>. <code>__2outs</code> = bases empty
+        with 2 outs; <code>123_0outs</code> = bases loaded, nobody out.
+        24 possible states; canonical sabermetric matrix used in WPA/LI
+        tables (Tango).
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">⚡ Top plays by Win Probability Added (WPA)</h2>
+    {% if not top_wpa %}
+      <p class="muted">No high-WPA plays found yet (threshold ≥5pp).</p>
+    {% else %}
+      <table class="ratings-table playbyplay">
+        <thead>
+          <tr>
+            <th>WPA</th>
+            <th>Matchup</th>
+            <th>Score</th>
+            <th>Event</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in top_wpa %}
+            <tr>
+              <td class="{% if p.wpa > 0 %}gap-pos{% else %}gap-neg{% endif %}">
+                <strong>{{ "%+.3f"|format(p.wpa) }}</strong>
+              </td>
+              <td class="muted">{{ p.matchup }}</td>
+              <td>{{ p.score }}</td>
+              <td>{{ p.event_type or '—' }}</td>
+              <td class="play-descr">{{ (p.description or '')[:80] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px; font-size:11px;">
+        WPA = change in P(home wins) from the batting team's perspective.
+        Computed via Tango-style RE24 lookup + normal approximation on
+        remaining innings. Positive WPA = play helped the batting team;
+        magnitude tells you how much the game shifted. Filtered to
+        score-changing plays only (attribution-clean).
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🎯 Event-type distribution (since book collection)</h2>
+    {% if not event_counts %}
+      <p class="muted">No plays captured since book collection started.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead>
+          <tr><th>Event</th><th>Count</th></tr>
+        </thead>
+        <tbody>
+          {% for e in event_counts[:12] %}
+            <tr>
+              <td>{{ e.event_type }}</td>
+              <td><strong>{{ "{:,}".format(e.n) }}</strong></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+</section>
+
+<div class="block">
+  <h2 class="section-title">🛠️ Programmatic access</h2>
+  <p class="muted">
+    The join queries are exposed for ad-hoc analysis:
+  </p>
+  <pre class="inputs" style="margin-top:8px;">
+from baseball import analysis
+
+# What Kalshi tickers correspond to one game?
+analysis.tickers_for_game(game_pk=823463)
+
+# Book trajectory around a specific play
+analysis.book_around_play(game_pk=823463, play_id=42, window_minutes=5.0)
+
+# Aggregate reaction stats across all HRs
+analysis.reaction_summary("Home Run", window_minutes=10.0, min_pct_change=0.02)
+</pre>
+</div>
+
+{% endblock %}

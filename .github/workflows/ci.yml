@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    # Weekly, so the dependency audit below runs even when nothing is
+    # pushed — a CVE lands against a pinned version between pushes, not
+    # because of one. (P2/R-22.)
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install ruff
+        # Pinned to the same version .pre-commit-config.yaml uses. Unpinned,
+        # CI silently drifted onto newer rule sets than the local hook, so the
+        # two tools disagreed about what "clean" meant.
+        run: pip install ruff==0.6.9
+      - name: ruff check
+        run: ruff check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install mypy==1.13.0 types-requests types-python-dateutil
+          # NOTE: deliberately NOT pandas-stubs. It surfaces ~39 further
+          # pandas-typing errors that have never been part of this gate;
+          # adopting it is real work, not a config tweak. Kept out of the
+          # pre-commit hook too so the two tools agree.
+      - name: mypy
+        run: mypy pm/venue/polymarket_client.py pm/ledger/portfolio.py pm/ledger/calibration.py pm/ledger/alerts.py pm/ledger/risk.py pm/core/profiles.py pm/venue/provider.py pm/venue/kalshi_client.py pm/research/backtest.py pm/feeds/crypto_data.py edges/ pm/feeds/llm_data.py pm/feeds/llm_matcher.py pm/feeds/llm_cache.py pm/feeds/sports_data.py pm/feeds/manifold_data.py pm/feeds/macro_data.py pm/venue/slippage.py pm/archive/book_archive.py pm/capture/book_poller.py pm/arms/strategy_runner.py pm/research/backtest_history.py pm/venue/kalshi_auth.py pm/venue/kalshi_orders.py pm/feeds/llm_deep_analysis.py pm/feeds/web_context.py pm/ops/auto_resolve_runner.py pm/ops/bulk_deep_analysis.py pm/core/atomic_io.py pm/trading/live_gates.py pm/ops/backup_sqlite.py pm/trading/execution.py pm/core/sqlite_schema.py pm/core/shutdown.py pm/core/provenance.py pm/core/circuit_breaker.py
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests + doctests
+        run: pytest
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: htmlcov
+          path: htmlcov/
+
+  # R-26: the reproducibility half the audit job doesn't cover. `audit`
+  # scans requirements.lock.txt for CVEs but never INSTALLS it — and `test`
+  # installs requirements.txt, which floats. Nothing proved the lock still
+  # produces a working environment until the day a second machine needed it.
+  # This job is that proof, on every push and on the weekly schedule.
+  test-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install from the LOCK file only
+        run: pip install -r requirements.lock.txt
+
+      - name: Run tests + doctests (no coverage — the test job owns the gate)
+        run: pytest -p no:cacheprovider --no-cov
+
+  audit:
+    # Dependency vulnerability scan (P2/R-22). Audits the LOCK file — the
+    # exact tree a rebuild resolves to — not the loose manifest. Fails the
+    # run on any known vulnerability; that is the point, even when the
+    # push that trips it is unrelated. Was never run before 2026-08-17
+    # (first result: clean). Runs on push, PR, and the weekly schedule.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pip-audit
+        run: pip install pip-audit==2.10.1
+      - name: pip-audit requirements.lock.txt
+        run: pip-audit -r requirements.lock.txt --strict --progress-spinner off --desc on

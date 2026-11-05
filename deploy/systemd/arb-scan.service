@@ -1,0 +1,14 @@
+[Unit]
+Description=Cross-market arb scan — periodic alerting idler (executable bid/ask, net fees, Kalshi mutually-exclusive flag)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.arms.arb_scan --loop --interval 900 --limit 3000 --min-edge 0.01
+Restart=on-failure
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

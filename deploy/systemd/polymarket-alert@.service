@@ -1,0 +1,21 @@
+# Failure hook. Instantiated per failing unit via OnFailure= — systemd
+# substitutes the failed unit's name for %i, so one template covers the fleet.
+#
+# Wired into a unit with:
+#   [Unit]
+#   OnFailure=polymarket-alert@%n.service
+#
+# Fires on a crash, a non-zero exit, or a start-limit hit — including the
+# crash-loop case, which is precisely the failure the ledger hardening was
+# written to prevent and which nothing previously reported.
+[Unit]
+Description=Alert that %i failed
+# Never let the alerter's own failure cascade into more alerts.
+OnFailure=
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.core.notify --unit %i
+# The alerter must not be able to hang. If a push blocks, give up quietly.
+TimeoutStartSec=60

@@ -1,0 +1,737 @@
+{
+  "asof_utc": "2026-10-22T03:04:50.434835+00:00",
+  "screened_markets": 14,
+  "passing_markets": 5,
+  "passing_events": 3,
+  "sum_ceiling_dollars_period": 16.5,
+  "rows": [
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-U37.9",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 24997.77,
+      "no_book_total": 13960.92,
+      "two_sided_target_met": true,
+      "yes_bid": "0.0500",
+      "yes_ask": "0.0600",
+      "yes_bid_size": "19854.84",
+      "yes_ask_size": "9969.15",
+      "volume_24h": "2805.20",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.0500",
+            "21921.94"
+          ],
+          "opposite_best": [
+            "0.9400",
+            "10092.00"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.9400",
+            "10092.00"
+          ],
+          "opposite_best": [
+            "0.0500",
+            "21921.94"
+          ],
+          "spread_dollars": 0.01000000000000005,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-E37.9",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 29834.61,
+      "no_book_total": 13752.03,
+      "two_sided_target_met": true,
+      "yes_bid": "0.0400",
+      "yes_ask": "0.0500",
+      "yes_bid_size": "24197.32",
+      "yes_ask_size": "9516.83",
+      "volume_24h": "916.46",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.0400",
+            "26293.05"
+          ],
+          "opposite_best": [
+            "0.9500",
+            "10358.68"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.9500",
+            "10358.68"
+          ],
+          "opposite_best": [
+            "0.0400",
+            "26293.05"
+          ],
+          "spread_dollars": 0.010000000000000044,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-E38.4",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 6580.0199999999995,
+      "no_book_total": 6633.8,
+      "two_sided_target_met": true,
+      "yes_bid": "0.2000",
+      "yes_ask": "0.2100",
+      "yes_bid_size": "21.30",
+      "yes_ask_size": "3434.88",
+      "volume_24h": "2786.14",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.2000",
+            "36.00"
+          ],
+          "opposite_best": [
+            "0.7800",
+            "4446.28"
+          ],
+          "spread_dollars": 0.020000000000000018,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": true,
+          "plausibly_scorable": true
+        },
+        "no": {
+          "best": [
+            "0.7800",
+            "4446.28"
+          ],
+          "opposite_best": [
+            "0.2000",
+            "36.00"
+          ],
+          "spread_dollars": 0.019999999999999962,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": true
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": true
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-E38.2",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 8300.880000000001,
+      "no_book_total": 5542.79,
+      "two_sided_target_met": true,
+      "yes_bid": "0.1000",
+      "yes_ask": "0.1300",
+      "yes_bid_size": "2191.58",
+      "yes_ask_size": "2748.40",
+      "volume_24h": "12382.93",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.1000",
+            "2620.00"
+          ],
+          "opposite_best": [
+            "0.8800",
+            "1633.15"
+          ],
+          "spread_dollars": 0.020000000000000018,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": true
+        },
+        "no": {
+          "best": [
+            "0.8800",
+            "1633.15"
+          ],
+          "opposite_best": [
+            "0.1000",
+            "2620.00"
+          ],
+          "spread_dollars": 0.01999999999999999,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": true
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": true
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-E38.1",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 15003.15,
+      "no_book_total": 8437.119999999999,
+      "two_sided_target_met": true,
+      "yes_bid": "0.0600",
+      "yes_ask": "0.0700",
+      "yes_bid_size": "17186.85",
+      "yes_ask_size": "4423.12",
+      "volume_24h": "4596.55",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.0600",
+            "17494.55"
+          ],
+          "opposite_best": [
+            "0.9300",
+            "4499.45"
+          ],
+          "spread_dollars": 0.009999999999999898,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.9300",
+            "4499.45"
+          ],
+          "opposite_best": [
+            "0.0600",
+            "17494.55"
+          ],
+          "spread_dollars": 0.009999999999999953,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-E38.0",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 27765.76,
+      "no_book_total": 9581.22,
+      "two_sided_target_met": true,
+      "yes_bid": "0.0500",
+      "yes_ask": "0.0600",
+      "yes_bid_size": "22611.66",
+      "yes_ask_size": "4157.67",
+      "volume_24h": "873.42",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.0500",
+            "22894.98"
+          ],
+          "opposite_best": [
+            "0.9400",
+            "3982.32"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.9400",
+            "3982.32"
+          ],
+          "opposite_best": [
+            "0.0500",
+            "22894.98"
+          ],
+          "spread_dollars": 0.01000000000000005,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-E38.3",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 6063.46,
+      "no_book_total": 7669.219999999999,
+      "two_sided_target_met": true,
+      "yes_bid": "0.3500",
+      "yes_ask": "0.3700",
+      "yes_bid_size": "34.00",
+      "yes_ask_size": "58.00",
+      "volume_24h": "10182.72",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.2900",
+            "16.00"
+          ],
+          "opposite_best": [
+            "0.6900",
+            "394.70"
+          ],
+          "spread_dollars": 0.020000000000000018,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": true,
+          "plausibly_scorable": true
+        },
+        "no": {
+          "best": [
+            "0.6900",
+            "394.70"
+          ],
+          "opposite_best": [
+            "0.2900",
+            "16.00"
+          ],
+          "spread_dollars": 0.020000000000000073,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": true
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": true
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-A38.5",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 8499.33,
+      "no_book_total": 7425.87,
+      "two_sided_target_met": true,
+      "yes_bid": "0.1100",
+      "yes_ask": "0.1200",
+      "yes_bid_size": "5028.18",
+      "yes_ask_size": "15.79",
+      "volume_24h": "2577.84",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.1100",
+            "4207.70"
+          ],
+          "opposite_best": [
+            "0.8800",
+            "4395.80"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.8800",
+            "4395.80"
+          ],
+          "opposite_best": [
+            "0.1100",
+            "4207.70"
+          ],
+          "spread_dollars": 0.009999999999999995,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXTRUMPAPPROVE-26OCT22-E38.5",
+      "event": "KXTRUMPAPPROVE-26OCT22",
+      "series": "KXTRUMPAPPROVE",
+      "pool_dollars_period": 600.0,
+      "duration_hours": 24.0,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 6.0,
+      "bound_dollars_period": 6.0,
+      "yes_book_total": 17491.879999999997,
+      "no_book_total": 7714.0,
+      "two_sided_target_met": true,
+      "yes_bid": "0.0700",
+      "yes_ask": "0.0800",
+      "yes_bid_size": "14008.58",
+      "yes_ask_size": "4104.82",
+      "volume_24h": "1223.99",
+      "close_time": "2026-10-22T16:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.0700",
+            "14754.48"
+          ],
+          "opposite_best": [
+            "0.9200",
+            "4146.72"
+          ],
+          "spread_dollars": 0.009999999999999898,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.9200",
+            "4146.72"
+          ],
+          "opposite_best": [
+            "0.0700",
+            "14754.48"
+          ],
+          "spread_dollars": 0.009999999999999953,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 3.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXRAINONT-27FEB27-27FEB27-T0",
+      "event": "KXRAINONT-27FEB27-27FEB27",
+      "series": "KXRAINONT",
+      "pool_dollars_period": 500.0,
+      "duration_hours": 73.56666666666666,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 1.6311735387403716,
+      "bound_dollars_period": 5.0,
+      "yes_book_total": 3715.37,
+      "no_book_total": 15434.82,
+      "two_sided_target_met": true,
+      "yes_bid": "0.3100",
+      "yes_ask": "0.3500",
+      "yes_bid_size": "20.17",
+      "yes_ask_size": "10.86",
+      "volume_24h": "17075.90",
+      "close_time": "2027-02-28T07:59:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.3300",
+            "12.32"
+          ],
+          "opposite_best": [
+            "0.6600",
+            "12.13"
+          ],
+          "spread_dollars": 0.009999999999999898,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": true,
+          "plausibly_scorable": true
+        },
+        "no": {
+          "best": [
+            "0.6600",
+            "12.13"
+          ],
+          "opposite_best": [
+            "0.3300",
+            "12.32"
+          ],
+          "spread_dollars": 0.009999999999999953,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": true,
+          "plausibly_scorable": true
+        }
+      },
+      "one_sided_ceiling_dollars_period": 2.5,
+      "passes": true
+    },
+    {
+      "ticker": "KXONIONACT-30JAN01-30JAN01",
+      "event": "KXONIONACT-30JAN01",
+      "series": "KXONIONACT",
+      "pool_dollars_period": 1000.0,
+      "duration_hours": 101.97341591388889,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 2.353554579388291,
+      "bound_dollars_period": 10.0,
+      "yes_book_total": 33937.38,
+      "no_book_total": 33151.06,
+      "two_sided_target_met": true,
+      "yes_bid": "0.1700",
+      "yes_ask": "0.2000",
+      "yes_bid_size": "10.00",
+      "yes_ask_size": "5.00",
+      "volume_24h": "13118.29",
+      "close_time": "2030-01-01T15:00:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.2000",
+            "27.00"
+          ],
+          "opposite_best": [
+            "0.6600",
+            "3.00"
+          ],
+          "spread_dollars": 0.14,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": true,
+          "plausibly_scorable": true
+        },
+        "no": {
+          "best": [
+            "0.6600",
+            "3.00"
+          ],
+          "opposite_best": [
+            "0.2000",
+            "27.00"
+          ],
+          "spread_dollars": 0.13999999999999996,
+          "inside_tick_available": true,
+          "best_size_below_reference_target": true,
+          "plausibly_scorable": true
+        }
+      },
+      "one_sided_ceiling_dollars_period": 5.0,
+      "passes": true
+    },
+    {
+      "ticker": "KXONIONACT-30JAN01-29JAN01",
+      "event": "KXONIONACT-30JAN01",
+      "series": "KXONIONACT",
+      "pool_dollars_period": 1000.0,
+      "duration_hours": 101.97341591527777,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 2.3535545793562354,
+      "bound_dollars_period": 10.0,
+      "yes_book_total": 79758.28,
+      "no_book_total": 28543.24,
+      "two_sided_target_met": true,
+      "yes_bid": "0.1400",
+      "yes_ask": "0.1500",
+      "yes_bid_size": "74569.85",
+      "yes_ask_size": "20369.66",
+      "volume_24h": "12.58",
+      "close_time": "2029-01-01T15:00:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.1400",
+            "72752.83"
+          ],
+          "opposite_best": [
+            "0.8500",
+            "20117.71"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.8500",
+            "20117.71"
+          ],
+          "opposite_best": [
+            "0.1400",
+            "72752.83"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 5.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXONIONACT-30JAN01-28JAN01",
+      "event": "KXONIONACT-30JAN01",
+      "series": "KXONIONACT",
+      "pool_dollars_period": 1000.0,
+      "duration_hours": 101.97341591749999,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 2.353554579304946,
+      "bound_dollars_period": 10.0,
+      "yes_book_total": 72799.67,
+      "no_book_total": 33419.479999999996,
+      "two_sided_target_met": true,
+      "yes_bid": "0.1200",
+      "yes_ask": "0.1300",
+      "yes_bid_size": "68213.67",
+      "yes_ask_size": "25765.48",
+      "volume_24h": "0.00",
+      "close_time": "2028-01-01T15:00:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.1200",
+            "67363.67"
+          ],
+          "opposite_best": [
+            "0.8700",
+            "23967.48"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.8700",
+            "23967.48"
+          ],
+          "opposite_best": [
+            "0.1200",
+            "67363.67"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 5.0,
+      "passes": false
+    },
+    {
+      "ticker": "KXONIONACT-30JAN01-27JAN01",
+      "event": "KXONIONACT-30JAN01",
+      "series": "KXONIONACT",
+      "pool_dollars_period": 1000.0,
+      "duration_hours": 101.97341592583334,
+      "target_size": 1000.0,
+      "discount_factor_bps": 5000,
+      "bound_dollars_day": 2.353554579112612,
+      "bound_dollars_period": 10.0,
+      "yes_book_total": 52051.0,
+      "no_book_total": 116575.57,
+      "two_sided_target_met": true,
+      "yes_bid": "0.0400",
+      "yes_ask": "0.0500",
+      "yes_bid_size": "34265.00",
+      "yes_ask_size": "77753.57",
+      "volume_24h": "82657.00",
+      "close_time": "2027-01-01T15:00:00Z",
+      "sides": {
+        "yes": {
+          "best": [
+            "0.0400",
+            "34972.00"
+          ],
+          "opposite_best": [
+            "0.9500",
+            "79609.57"
+          ],
+          "spread_dollars": 0.010000000000000009,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        },
+        "no": {
+          "best": [
+            "0.9500",
+            "79609.57"
+          ],
+          "opposite_best": [
+            "0.0400",
+            "34972.00"
+          ],
+          "spread_dollars": 0.010000000000000044,
+          "inside_tick_available": false,
+          "best_size_below_reference_target": false,
+          "plausibly_scorable": false
+        }
+      },
+      "one_sided_ceiling_dollars_period": 5.0,
+      "passes": false
+    }
+  ]
+}

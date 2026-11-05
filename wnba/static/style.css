@@ -1,0 +1,943 @@
+/* ⚾ Baseball sidecar UI — diamond-green theme.
+ *
+ * Color anchors:
+ *   field green       #2a6e3f
+ *   field green dark  #1f5230
+ *   infield clay      #b87333
+ *   chalk             #fafaf2
+ *   stitched red      #c8102e
+ *   night sky         #14252e
+ *   muted             #6e7a82
+ */
+
+:root {
+  /* Light theme (default) — daytime ballpark */
+  --field:        #2a6e3f;
+  --field-dark:   #1f5230;
+  --clay:         #b87333;
+  --chalk:        #fafaf2;
+  --stitched:     #c8102e;
+  --night:        #14252e;
+  --paper:        #fbf9f1;
+  --paper-2:      #f3efe1;
+  --ink:          #1a2025;
+  --muted:        #6e7a82;
+  --line:         #dbd5be;
+  --shadow:       0 2px 6px rgba(0,0,0,.08);
+  --shadow-lg:    0 6px 20px rgba(0,0,0,.12);
+  --bg-stripe-a:  var(--paper);
+  --bg-stripe-b:  var(--paper-2);
+  --card-bg:      var(--chalk);
+  --code-bg:      var(--night);
+  --code-fg:      var(--chalk);
+  --link:         #1d6f3f;      /* readable green on light paper */
+}
+
+/* Dark theme — night game under the lights */
+[data-theme="dark"] {
+  --field:        #5fa572;     /* lit-up grass under stadium lights */
+  --field-dark:   #2f6e44;
+  --clay:         #d99356;
+  --chalk:        #e8e6dc;
+  --stitched:     #e54358;
+  --night:        #0a141a;
+  --paper:        #161e23;     /* deep dugout teal */
+  --paper-2:      #1d272d;
+  --ink:          #e8e6dc;
+  --muted:        #8a98a2;
+  --line:         #2d3a44;
+  --shadow:       0 2px 6px rgba(0,0,0,.4);
+  --shadow-lg:    0 6px 20px rgba(0,0,0,.55);
+  --bg-stripe-a:  #131b1f;
+  --bg-stripe-b:  #181f24;
+  --card-bg:      #1d272d;
+  --code-bg:      #0a141a;
+  --code-fg:      #c8d0d6;
+  --link:         #6cc48a;      /* readable green on dark dugout teal */
+}
+
+* { box-sizing: border-box; }
+
+/* Content links — theme-aware so dark mode isn't blue-on-black. */
+a { color: var(--link); }
+a:hover { text-decoration: underline; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  /* Defense against any descendant element that tries to push past
+     the viewport — better to clip than to force horizontal scroll on
+     the whole page. Individual scrollable regions can still scroll. */
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--bg-stripe-a) 0 20px,
+      var(--bg-stripe-b) 20px 21px
+    );
+  color: var(--ink);
+  min-height: 100vh;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* ─── Top bar ───────────────────────────────────────────── */
+
+.topbar {
+  background: linear-gradient(180deg, var(--field) 0%, var(--field-dark) 100%);
+  color: var(--chalk);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  box-shadow: var(--shadow);
+  border-bottom: 3px solid var(--stitched);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.ball {
+  display: inline-block;
+  width: 22px; height: 22px;
+  background: var(--chalk);
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,.15);
+}
+.ball::before, .ball::after {
+  content: "";
+  position: absolute;
+  border: 1.5px solid var(--stitched);
+  border-radius: 50%;
+  width: 22px; height: 22px;
+  top: 0; left: 0;
+  clip-path: inset(0 50% 0 0 round 50%);
+}
+.ball::after {
+  transform: scaleX(-1);
+}
+
+.brand-link {
+  color: var(--chalk);
+  text-decoration: none;
+}
+.model-tag {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(250, 250, 242, .65);
+  margin-left: 6px;
+}
+
+.topnav {
+  display: flex;
+  gap: 18px;
+  flex: 1;
+}
+.topnav a {
+  color: var(--chalk);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+}
+.topnav a:hover {
+  border-bottom-color: var(--stitched);
+}
+
+.health {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.badge {
+  background: rgba(255, 255, 255, .15);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badge-ok        { background: rgba(0, 200, 100, 0.25); }
+.badge-degraded  { background: rgba(220, 170, 0, 0.30); }
+.badge-down      { background: rgba(220, 60, 60, 0.30); }
+
+.health-detail   { color: rgba(250, 250, 242, .80); }
+.health-ts       { color: rgba(250, 250, 242, .55); font-size: 11px; }
+
+.refresh-btn {
+  background: var(--stitched);
+  color: var(--chalk);
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+.refresh-btn:hover { filter: brightness(1.1); }
+
+.status-msg {
+  background: rgba(255,255,255,0.18);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* ─── Layout ─────────────────────────────────────────────── */
+
+.container {
+  max-width: 1280px;
+  margin: 24px auto;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .container { grid-template-columns: 2fr 1fr; }
+  .date-nav, .slate { grid-column: 1; }
+  .sidebar-blocks   { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+.bottom {
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ─── Date nav ──────────────────────────────────────────── */
+
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  margin: 8px 0;
+}
+.date-current {
+  margin: 0;
+  font-size: 24px;
+  color: var(--field-dark);
+  letter-spacing: -0.01em;
+}
+.date-btn {
+  background: var(--paper-2);
+  color: var(--ink);
+  padding: 8px 14px;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+}
+.date-btn:hover { background: var(--card-bg); }
+
+/* ─── Game cards ────────────────────────────────────────── */
+
+.section-title {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--field-dark);
+  border-bottom: 2px solid var(--clay);
+  padding-bottom: 6px;
+  margin: 16px 0 12px 0;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.game-card {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  text-decoration: none;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.game-status {
+  font-weight: 700;
+  color: var(--field-dark);
+}
+.status-final         { color: var(--muted); }
+.status-in-progress   { color: var(--stitched); }
+.status-postponed,
+.status-suspended     { color: var(--clay); }
+
+.teams {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  position: relative;
+}
+.team-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+.team-fav {
+  background: linear-gradient(90deg,
+              rgba(42, 110, 63, 0.10) 0%,
+              rgba(42, 110, 63, 0.02) 100%);
+  border-left: 3px solid var(--field);
+  padding-left: 5px;
+}
+.team-logo {
+  width: 36px; height: 36px;
+}
+.team-info {
+  display: flex;
+  flex-direction: column;
+}
+.team-abbr {
+  font-weight: 700;
+  font-size: 16px;
+}
+.team-name {
+  font-size: 12px;
+  color: var(--muted);
+}
+.team-score {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--field-dark);
+}
+.at-symbol {
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-style: italic;
+  color: var(--muted);
+  font-size: 12px;
+  display: none;
+}
+
+.matchup-line {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  font-size: 12px;
+}
+.pitcher {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--paper);
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px dashed var(--line);
+}
+.pitcher-label {
+  font-size: 10px;
+  color: var(--clay);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.pitcher-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+.pitcher-era {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.winprob-bar {
+  display: flex;
+  height: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.winprob-away, .winprob-home {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--chalk);
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.winprob-away { background: var(--clay); }
+.winprob-home { background: var(--field); }
+.winprob-missing {
+  background: var(--paper-2);
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+  justify-content: center;
+  align-items: center;
+}
+
+.no-games {
+  background: var(--card-bg);
+  padding: 32px;
+  text-align: center;
+  border-radius: 8px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ─── Sidebar blocks ────────────────────────────────────── */
+
+.sidebar-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.block {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.ratings-table, .standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ratings-table th, .standings-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.ratings-table td, .standings-table td {
+  padding: 6px;
+  border-bottom: 1px solid var(--paper-2);
+}
+.team-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mini-logo {
+  width: 20px; height: 20px;
+}
+.muted { color: var(--muted); font-size: 12px; }
+.more-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--stitched);
+  text-decoration: none;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 600; text-align: right; }
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.activity-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--paper-2);
+  font-size: 12px;
+}
+.activity-list li:last-child { border-bottom: none; }
+.activity-kind {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--paper-2);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.kind-fetch    { background: rgba(42, 110, 63, 0.15); color: var(--field-dark); }
+.kind-compute  { background: rgba(184, 115, 51, 0.15); color: var(--clay); }
+.kind-settle   { background: rgba(20, 37, 46, 0.10); color: var(--night); }
+.kind-error    { background: rgba(200, 16, 46, 0.15); color: var(--stitched); }
+.kind-trigger  { background: rgba(20, 37, 46, 0.05); color: var(--muted); }
+.activity-msg  { color: var(--ink); }
+.activity-ts   { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+/* ─── Standings page ─────────────────────────────────────── */
+
+.page-title {
+  margin: 16px 0 24px 0;
+  color: var(--field-dark);
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+.league {
+  margin-bottom: 32px;
+}
+.league-title {
+  background: var(--field-dark);
+  color: var(--chalk);
+  padding: 8px 14px;
+  border-radius: 6px 6px 0 0;
+  margin: 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.division {
+  background: var(--card-bg);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-top: none;
+  margin-bottom: 12px;
+}
+.div-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clay);
+  margin: 0 0 8px 0;
+}
+.standings-table tr:hover {
+  background: var(--paper);
+}
+.note {
+  background: var(--paper-2);
+  padding: 12px;
+  border-left: 4px solid var(--clay);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* ─── Game detail page ───────────────────────────────────── */
+
+.back-link {
+  margin-bottom: 8px;
+}
+.back-link a {
+  color: var(--field-dark);
+  text-decoration: none;
+  font-size: 13px;
+}
+.back-link a:hover { color: var(--stitched); }
+
+.game-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 24px;
+  margin: 8px 0;
+}
+.big-logo {
+  width: 56px; height: 56px;
+}
+.at-symbol-big {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 400;
+}
+.game-meta {
+  display: flex;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.final-score {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.big-winprob {
+  display: flex;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 16px 0 8px 0;
+  box-shadow: var(--shadow);
+}
+.big-winprob-away, .big-winprob-home {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--chalk);
+  padding: 0 16px;
+  gap: 12px;
+}
+.big-winprob-away { background: var(--clay); }
+.big-winprob-home { background: var(--field); }
+.big-abbr { font-size: 16px; opacity: 0.85; }
+.big-pct  { font-size: 28px; }
+.center   { text-align: center; }
+
+.pitcher-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.pitcher-card {
+  background: var(--paper);
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px dashed var(--clay);
+}
+.pitcher-team {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clay);
+  font-weight: 700;
+}
+.pitcher-card-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 6px 0;
+}
+.pitcher-card-era {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.inputs {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  /* Soft-wrap long lines instead of horizontal scroll — the model
+     inputs JSON is often one big line and was pushing the page
+     wider than the viewport. */
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* ─── Theme toggle button ────────────────────────────────── */
+
+.theme-toggle {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--chalk);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: background-color 0.15s ease;
+}
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.theme-toggle .theme-icon { display: inline-block; }
+
+/* Dark-mode-specific tweaks that don't fit cleanly via variables */
+[data-theme="dark"] .pitcher {
+  background: rgba(0, 0, 0, 0.20);
+}
+[data-theme="dark"] .matchup-line .pitcher-name { color: var(--ink); }
+[data-theme="dark"] .activity-list li {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .ratings-table td,
+[data-theme="dark"] .standings-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .ratings-table tr:hover,
+[data-theme="dark"] .standings-table tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .team-fav {
+  background: linear-gradient(90deg,
+              rgba(95, 165, 114, 0.18) 0%,
+              rgba(95, 165, 114, 0.04) 100%);
+  border-left-color: var(--field);
+}
+[data-theme="dark"] .pitcher-card {
+  background: rgba(0, 0, 0, 0.25);
+}
+[data-theme="dark"] .note {
+  background: rgba(0, 0, 0, 0.20);
+}
+
+/* ─── Recent Games date picker ───────────────────────────── */
+
+.games-date-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 18px 0;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.games-date-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.games-date-picker input[type="date"] {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.games-date-picker button {
+  padding: 5px 14px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.games-date-picker button:hover {
+  background: var(--card-bg);
+}
+
+/* ─── Play-by-play timeline ──────────────────────────────── */
+
+.playbyplay {
+  font-size: 12px;
+  table-layout: fixed;
+  width: 100%;
+}
+.playbyplay td {
+  vertical-align: top;
+  padding: 5px 6px;
+  overflow-wrap: anywhere;
+}
+.play-descr {
+  color: var(--ink);
+  /* No max-width — table-layout:fixed assigns column width; this
+     cell just needs to wrap long descriptions instead of pushing
+     the whole table past the viewport. */
+  word-break: break-word;
+  white-space: normal;
+}
+.play-score {
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.inning-half {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--clay);
+  margin-right: 2px;
+}
+.play-row.kind-home-run td {
+  background: linear-gradient(90deg,
+              rgba(200, 16, 46, 0.10) 0%,
+              rgba(200, 16, 46, 0.02) 60%);
+  font-weight: 600;
+}
+[data-theme="dark"] .play-row.kind-home-run td {
+  background: linear-gradient(90deg,
+              rgba(229, 67, 88, 0.20) 0%,
+              rgba(229, 67, 88, 0.05) 60%);
+}
+.play-row.kind-strikeout td {
+  color: var(--field-dark);
+}
+[data-theme="dark"] .play-row.kind-strikeout td {
+  color: var(--field);
+}
+
+/* ─── Stats page insight grid ─────────────────────────────── */
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+.insight-grid .block {
+  margin: 0;
+}
+.gap-pos { color: var(--field-dark); font-weight: 700; }
+.gap-neg { color: var(--stitched); font-weight: 700; }
+[data-theme="dark"] .gap-pos { color: var(--field); }
+[data-theme="dark"] .gap-neg { color: var(--stitched); }
+
+/* ─── Chat ────────────────────────────────────────────────── */
+
+.chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+  min-height: 60px;
+}
+.chat-form {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.chat-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-form textarea {
+  font: inherit;
+  font-family: inherit;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  resize: vertical;
+  min-height: 50px;
+}
+.chat-form textarea:focus {
+  outline: 2px solid var(--field);
+  border-color: var(--field);
+}
+.chat-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.chat-model-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.chat-model-label select {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.chat-thinking {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--clay);
+}
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: inline; }
+
+.chat-bubble {
+  border-radius: 8px;
+  padding: 10px 14px;
+  max-width: 88%;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.chat-bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(180deg, var(--field) 0%, var(--field-dark) 100%);
+  color: var(--chalk);
+  border-color: var(--field-dark);
+}
+.chat-bubble.user .chat-bubble-header { color: rgba(250, 250, 242, .65); }
+.chat-bubble.assistant {
+  align-self: flex-start;
+  border-left: 3px solid var(--clay);
+}
+.chat-bubble.error {
+  align-self: flex-start;
+  border-left: 3px solid var(--stitched);
+  background: rgba(200, 16, 46, 0.08);
+}
+.chat-bubble-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.chat-bubble-body {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* ─── Layout overrides for sidebar-less pages ─────────────────────
+ * The default .container at 1024px+ splits into a 2fr (content) +
+ * 1fr (sidebar) grid for the index page. Pages without a sidebar —
+ * /chat, /stats, /standings, /games, /game/{pk} — should take the
+ * full container width instead of leaving the right column empty.
+ * :has() lets us key off whether the page actually rendered a
+ * .sidebar-blocks child, no template changes needed.
+ */
+@media (min-width: 1024px) {
+  .container:not(:has(.sidebar-blocks)) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Chat bubble width — single-column readable line length ─── */
+.chat-bubble.assistant,
+.chat-bubble.error {
+  max-width: 100%;
+  width: auto;
+  /* Cap line length for readability even on wide screens */
+  max-width: min(900px, 100%);
+}
+.chat-bubble.user {
+  max-width: min(700px, 80%);
+}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}⚾ Standings{% endblock %}
+{% block content %}
+
+<h1 class="page-title">Standings</h1>
+
+{% for league_name, divs in grouped.items() %}
+  <section class="league">
+    <h2 class="league-title">{{ league_name }}</h2>
+    {% for div_name, teams in divs.items() %}
+      <div class="division">
+        <h3 class="div-title">{{ div_name }}</h3>
+        <table class="standings-table">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>W</th>
+              <th>L</th>
+              <th>PCT</th>
+              <th>RD/G</th>
+              <th>Pyth</th>
+              <th>Strength</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in teams %}
+              <tr>
+                <td class="team-cell">
+                  <strong>{{ t.abbreviation }}</strong>
+                  <span class="muted">{{ t.short_name }}</span>
+                </td>
+                <td>{{ t.wins }}</td>
+                <td>{{ t.losses }}</td>
+                <td>{{ "%.3f"|format(t.win_pct) }}</td>
+                <td>{{ "%+.2f"|format(t.run_diff_per_game) }}</td>
+                <td>{{ "%.3f"|format(t.pythagorean) }}</td>
+                <td><strong>{{ "%.3f"|format(t.strength) }}</strong></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  </section>
+{% endfor %}
+
+<p class="note">
+  <strong>Strength</strong> is the regressed Pythagorean win expectancy — runs² / (runs² + runs_allowed²)
+  with {{ 40 }} virtual games at league-average added as a Bayesian prior so cold starts
+  aren't punished too harshly. It's the headline input the matchup model uses.
+</p>
+
+{% endblock %}

@@ -1,0 +1,14 @@
+[Unit]
+Description=News capture — accrues fresh-catalyst + price-at-detection panel for the news-reaction (speed) thesis
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.capture.news_capture --loop --interval 1800 --freshness-hours 8
+Restart=on-failure
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

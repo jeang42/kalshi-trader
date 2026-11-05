@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+venv/
+# Per-profile state (multi-user Option A)
+data/
+# Pre-profile legacy locations — kept in case anyone manually creates them
+portfolio.json
+forecasts.json
+alerts.json
+settings.json
+.streamlit/
+
+# coverage artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+.claude/
+.env.bak*

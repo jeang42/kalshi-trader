@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}🎾 Tennis{% endblock %}</title>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("tennis-theme");
+        var prefersDark = window.matchMedia &&
+                          window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", saved || (prefersDark ? "dark" : "light"));
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="ball"></span>
+      <a href="/" class="brand-link">Tennis</a>
+      <span class="model-tag">Elo (ATP+WTA) · v0.1</span>
+    </div>
+    <nav class="topnav">
+      <a href="/">Today</a>
+      <a href="/matches">Recent Matches</a>
+      <a href="/stats">Stats</a>
+      <a href="/chat">Chat</a>
+      <a href="/ratings">Elo Ratings</a>
+      <a href="https://www.espn.com/tennis/" target="_blank" rel="noopener">ESPN ↗</a>
+    </nav>
+    <div class="health">
+      {% set s = health.status %}
+      <span class="badge badge-{{ s }}">
+        {% if s == 'ok' %}🟢{% elif s == 'degraded' %}🟡{% else %}🔴{% endif %} {{ s }}
+      </span>
+      <span class="health-detail">{{ health.detail }}</span>
+      {% if health.last_update_ts %}<span class="health-ts">updated {{ health.last_update_ts.isoformat() | dt }}</span>{% endif %}
+      <button class="refresh-btn" hx-post="/refresh" hx-target="#refresh-status" hx-swap="innerHTML">↻ refresh</button>
+      <span id="refresh-status"></span>
+      <button class="theme-toggle" id="theme-toggle" type="button" title="Toggle dark mode"><span class="theme-icon" id="theme-icon">🌙</span></button>
+    </div>
+  </header>
+  <script>
+    (function () {
+      var btn=document.getElementById("theme-toggle"), icon=document.getElementById("theme-icon");
+      if(!btn)return;
+      function ic(){icon.textContent=document.documentElement.getAttribute("data-theme")==="dark"?"☀️":"🌙";}
+      ic();
+      btn.addEventListener("click",function(){
+        var n=(document.documentElement.getAttribute("data-theme")||"light")==="dark"?"light":"dark";
+        document.documentElement.setAttribute("data-theme",n);
+        try{localStorage.setItem("tennis-theme",n);}catch(e){} ic();
+      });
+    })();
+  </script>
+  <main class="container">{% block content %}{% endblock %}</main>
+  <footer class="bottom"><span>data: ESPN · Elo sidecar v0.1 · LAN-only</span></footer>
+</body>
+</html>

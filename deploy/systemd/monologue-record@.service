@@ -1,0 +1,12 @@
+[Unit]
+Description=Monologue corpus recorder — %i (OTA capture + whisper transcript)
+After=network-online.target
+OnFailure=polymarket-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.mention.monologue_recorder --show %i
+# capture window + transcription headroom
+TimeoutStartSec=5400

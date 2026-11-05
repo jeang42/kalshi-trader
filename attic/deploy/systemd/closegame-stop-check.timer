@@ -1,0 +1,11 @@
+[Unit]
+Description=Fire the close-game stop-loss A/B check once on 2026-06-16
+
+[Timer]
+# One-shot: fires on 2026-06-16 at 09:23 local. Persistent=true so it still
+# runs if the machine was off at that instant (fires on next boot).
+OnCalendar=2026-06-16 09:23:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="date-nav">
+  <a href="/?date={{ yesterday }}" class="date-btn">◀ {{ yesterday }}</a>
+  <h1 class="date-current">{{ today.strftime("%A · %B %-d, %Y") }}</h1>
+  <a href="/?date={{ tomorrow }}" class="date-btn">{{ tomorrow }} ▶</a>
+</section>
+
+<section class="slate">
+  {% if not games %}
+    <div class="no-games">No MLB games scheduled for this date.</div>
+  {% else %}
+    <h2 class="section-title">Today's slate · {{ games|length }} game{{ '' if games|length == 1 else 's' }}</h2>
+    <div class="game-grid">
+      {% for g in games %}
+        <a href="/game/{{ g.game_pk }}" class="game-card">
+          <div class="game-header">
+            <span class="game-status status-{{ g.status|lower|replace(' ','-') }}">{{ g.status }}</span>
+            <span class="game-time">{{ g.game_date | dt }}</span>
+          </div>
+
+          <div class="teams">
+            <div class="team-row {% if g.home_win_prob is not none and g.home_win_prob < 0.5 %}team-fav{% endif %}">
+              <img src="{{ logo_url(g.away_team_id) }}" alt="{{ g.away_abbr }} logo" class="team-logo">
+              <div class="team-info">
+                <span class="team-abbr">{{ g.away_abbr }}</span>
+                <span class="team-name">{{ g.away_name }}</span>
+              </div>
+              <span class="team-score">{% if g.away_score is not none %}{{ g.away_score }}{% endif %}</span>
+            </div>
+
+            <div class="at-symbol">@</div>
+
+            <div class="team-row {% if g.home_win_prob is not none and g.home_win_prob >= 0.5 %}team-fav{% endif %}">
+              <img src="{{ logo_url(g.home_team_id) }}" alt="{{ g.home_abbr }} logo" class="team-logo">
+              <div class="team-info">
+                <span class="team-abbr">{{ g.home_abbr }}</span>
+                <span class="team-name">{{ g.home_name }}</span>
+              </div>
+              <span class="team-score">{% if g.home_score is not none %}{{ g.home_score }}{% endif %}</span>
+            </div>
+          </div>
+
+          <div class="matchup-line">
+            <div class="pitcher">
+              <span class="pitcher-label">SP</span>
+              <span class="pitcher-name">{{ g.away_pitcher_name or "TBD" }}</span>
+              {% if g.away_pitcher_era is not none %}<span class="pitcher-era">{{ "%.2f"|format(g.away_pitcher_era) }} ERA</span>{% endif %}
+            </div>
+            <div class="pitcher">
+              <span class="pitcher-label">SP</span>
+              <span class="pitcher-name">{{ g.home_pitcher_name or "TBD" }}</span>
+              {% if g.home_pitcher_era is not none %}<span class="pitcher-era">{{ "%.2f"|format(g.home_pitcher_era) }} ERA</span>{% endif %}
+            </div>
+          </div>
+
+          {% if g.home_win_prob is not none %}
+            {% set home_pct = (g.home_win_prob * 100) | round(0, 'common') %}
+            {% set away_pct = 100 - home_pct %}
+            <div class="winprob-bar" title="Model: {{ g.away_abbr }} {{ away_pct|int }}% vs {{ g.home_abbr }} {{ home_pct|int }}%">
+              <div class="winprob-away" style="flex: {{ away_pct }};">{{ g.away_abbr }} {{ away_pct|int }}%</div>
+              <div class="winprob-home" style="flex: {{ home_pct }};">{{ home_pct|int }}% {{ g.home_abbr }}</div>
+            </div>
+          {% else %}
+            <div class="winprob-bar winprob-missing">no prediction available</div>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+
+<section class="sidebar-blocks">
+
+  <div class="block">
+    <h2 class="section-title">Top 10 by model strength</h2>
+    <table class="ratings-table">
+      <thead>
+        <tr><th>#</th><th>Team</th><th>Record</th><th>Pyth</th><th>Strength</th></tr>
+      </thead>
+      <tbody>
+        {% for t in ratings_top %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td class="team-cell">
+              <img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt="">
+              <strong>{{ t.abbreviation }}</strong> <span class="muted">{{ t.short_name }}</span>
+            </td>
+            <td>{{ t.wins }}-{{ t.losses }}</td>
+            <td>{{ "%.3f"|format(t.pythagorean) }}</td>
+            <td><strong>{{ "%.3f"|format(t.strength) }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a href="/standings" class="more-link">Full standings →</a>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Sidecar stats</h2>
+    <dl class="kv">
+      <dt>Season</dt><dd>{{ stats.season }}</dd>
+      <dt>Teams rated</dt><dd>{{ stats.teams_rated }}/{{ stats.teams_loaded }}</dd>
+      <dt>Settled predictions</dt><dd>{{ stats.brier_n }}</dd>
+      <dt>Brier score</dt><dd>{% if stats.brier_score %}{{ "%.4f"|format(stats.brier_score) }}{% else %}—{% endif %}</dd>
+      <dt>State DB</dt><dd>{{ (stats.db_bytes / 1024) | round(0) }} KB</dd>
+    </dl>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Recent activity</h2>
+    <ul class="activity-list">
+      {% for a in activity %}
+        <li>
+          <span class="activity-kind kind-{{ a.kind }}">{{ a.kind }}</span>
+          <span class="activity-msg">{{ a.message }}</span>
+          <span class="activity-ts">{{ a.ts.isoformat() | dt }}</span>
+        </li>
+      {% else %}
+        <li class="muted">No recent activity. Run <code>python -m baseball.runner</code> to populate.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+</section>
+
+{% endblock %}

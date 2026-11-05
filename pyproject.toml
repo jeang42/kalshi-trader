@@ -1,0 +1,165 @@
+[project]
+name = "kalshi-trader"
+version = "0.2.0a1"
+description = "Research harness and Streamlit console for Kalshi and Polymarket prediction markets — markets, scanners, backtesting, calibration, paper arms, gated live execution."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary — see LICENSE"}
+authors = [{name = "Jeff Angelcyk"}]
+keywords = ["polymarket", "prediction-markets", "kelly-criterion", "streamlit"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: Other/Proprietary License",
+    "Private :: Do Not Upload",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+]
+dependencies = [
+    "streamlit>=1.35.0",
+    "pandas>=2.0.0",
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+    "matplotlib>=3.8.0",
+    "plotly>=5.20.0",
+    "requests>=2.31.0",
+    "python-dateutil>=2.8.0",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "jinja2>=3.1.0",
+    "cryptography>=42.0.0",   # kalshi_auth RSA-PSS request signing
+    "websockets>=12.0",       # kalshi_ws
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.10.0",
+    "types-requests",
+    "types-python-dateutil",
+    "pre-commit>=3.5.0",
+]
+
+[project.urls]
+Repository = "https://github.com/jeang42/polymarket"
+Issues = "https://github.com/jeang42/polymarket/issues"
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+# "." (not "*.py") on purpose: entries in testpaths are INITIAL args, and pytest
+# never applies --ignore / norecursedirs to an initial arg — so a "*.py" glob
+# imported app.py at collection, which runs initialize_profiles() and the
+# sidecar bootstraps against the REAL data/ tree before any fixture exists
+# (verified on a fresh clone: four files created at collect time). Children of
+# "." DO go through the ignore hooks, so app.py stays out via --ignore below.
+# Just "." — not ["tests", "."]: pytest 8.4 silently drops the root doctests
+# when both are listed (9.x does not); "." alone collects tests/ + doctests
+# identically on both.
+testpaths = ["."]
+# attic/ = retired code + its former tests, never collected; pages/ = Streamlit
+# pages that run UI code at import; the rest are non-code trees.
+norecursedirs = ["attic", "pages", "docs", "deploy", "scripts", "data", ".venv", "htmlcov", ".pytest_cache", ".git", "*.egg", "build", "dist", "node_modules"]
+addopts = [
+    "--cov=pm.venue.polymarket_client",
+    "--cov=pm.ledger.portfolio",
+    "--cov=pm.ledger.calibration",
+    "--cov=pm.ledger.alerts",
+    "--cov=pm.ledger.risk",
+    "--cov=pm.core.profiles",
+    "--cov=pm.venue.provider",
+    "--cov=pm.venue.kalshi_client",
+    "--cov=pm.research.backtest",
+    "--cov=pm.feeds.crypto_data",
+    "--cov=edges",
+    "--cov=pm.feeds.llm_data",
+    "--cov=pm.feeds.llm_matcher",
+    "--cov=pm.feeds.llm_cache",
+    "--cov=pm.feeds.sports_data",
+    "--cov=pm.feeds.manifold_data",
+    "--cov=pm.feeds.macro_data",
+    "--cov=pm.venue.slippage",
+    "--cov=pm.archive.book_archive",
+    "--cov=pm.capture.book_poller",
+    "--cov=pm.arms.strategy_runner",
+    "--cov=pm.research.backtest_history",
+    "--cov=pm.venue.kalshi_auth",
+    "--cov=pm.venue.kalshi_orders",
+    "--cov=pm.feeds.llm_deep_analysis",
+    "--cov=pm.feeds.web_context",
+    "--cov=pm.ops.auto_resolve_runner",
+    "--cov=pm.ops.bulk_deep_analysis",
+    "--cov=pm.trading.execution",
+    "--cov=pm.core.atomic_io",
+    "--cov=pm.trading.live_gates",
+    "--cov=pm.ops.backup_sqlite",
+    "--cov=pm.ledger.position_meta",
+    "--cov=pm.core.emergency_stop",
+    "--cov=pm.venue.kalshi_fees",
+    # The arms that transact. Added 2026-08-15 (P1/R-08): the gate
+    # previously stopped at the analytical modules, so coverage was
+    # inversely correlated with financial risk and the erosion was
+    # invisible to CI.
+    "--cov=pm.ledger.oos_ledger",
+    "--cov=pm.core.notify",
+    "--cov=pm.core.web_auth",
+    "--cov=pm.ops.health_digest",
+    "--cov=pm.core.sqlite_schema",
+    "--cov=pm.core.shutdown",
+    "--cov=pm.core.logctx",
+    "--cov=pm.feeds.nhc_data",
+    "--cov=pm.research.storm_watch",
+    "--cov=pm.capture.advisory_capture",
+    "--cov=pm.core.provenance",
+    "--cov=pm.core.circuit_breaker",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--doctest-modules",
+    "--ignore=app.py",          # Streamlit imports break doctest discovery
+]
+
+[tool.coverage.run]
+omit = ["tests/*", "app.py"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+
+# ---------------------------------------------------------------------------
+# ruff — linter + formatter
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = [".venv", "htmlcov", ".pytest_cache", "attic"]  # attic/ = retired code, kept for reference, not gated
+
+[tool.ruff.lint]
+# E/W: pycodestyle. F: pyflakes (real bugs). I: import order. UP: pyupgrade.
+# B: bugbear (likely-bug patterns).
+select = ["E", "F", "W", "I", "UP", "B"]
+# E501 (line too long) is annoying for tables and docstrings; we trust the
+# formatter to handle width otherwise.
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501", "F401"]   # tests can have unused imports for fixtures
+
+# ---------------------------------------------------------------------------
+# mypy — type checker (permissive; catches obvious bugs, not annotation gaps)
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true       # streamlit, plotly aren't typed
+warn_unused_configs = true
+warn_return_any = false
+check_untyped_defs = true
+disallow_untyped_defs = false       # don't require annotations everywhere
+exclude = ["app\\.py$", "tests/", "htmlcov/", "\\.venv/", "attic/"]

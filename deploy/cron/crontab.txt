@@ -1,0 +1,154 @@
+# polymarket book poller — every 5 minutes, 25 markets per provider per cycle.
+# flock prevents pile-up when a cycle runs long (HDD/IO contention, 429 retries).
+# RETIRED 2026-08-11 (P1/R-15): the reaction thesis this fed was measured
+# dead on 2026-07-11 and its services were stopped then, but this cron
+# survived the cleanup and kept growing book_archive.sqlite to 43 GB on a
+# near-full SSD. Re-enable by uncommenting if the thesis is revived.
+#*/5 * * * * flock -n /tmp/polymarket_book_poller.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.capture.book_poller --max-markets 25 >> data/shared/book_poller.log 2>&1'
+
+# agentic strategy runner — market_consensus baseline, every 30 minutes
+*/30 * * * * flock -n /tmp/polymarket_strategy_consensus.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.arms.strategy_runner --profile agentic --strategy market_consensus --bankroll 1000 --max-position-pct 0.10 --min-gap 0.01 --max-markets 50 --closing-within-days 30 >> data/shared/strategy_runner.log 2>&1'
+
+# agentic favorite-grind — pennies-in-front-of-a-steamroller test, every 30 minutes
+# Smaller per-position cap (5%) because favorite-grinding stakes large at low edge.
+# Smaller min-gap (0.02) because the assumed_edge default is 0.02 — anything bigger
+# never fires.
+*/30 * * * * flock -n /tmp/polymarket_strategy_favorites.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.arms.strategy_runner --profile agentic_favorites --strategy favorite_grind --bankroll 1000 --max-position-pct 0.05 --min-gap 0.02 --max-markets 100 >> data/shared/strategy_runner_favorites.log 2>&1'
+
+# agentic LLM forecast — Ollama-driven, every 30 minutes (offset by 15min to spread load)
+# --strategy-arg min_gap=0.05 lowers the strategy's internal 0.10pp threshold so we get
+# more signals; --strategy-arg min_days_to_expiry=2.0 filters near-resolution markets
+# where the LLM's NO conviction can look like a fake +99pp gap against an
+# already-settled market. Tight 5% per-position cap because LLM mistakes can be
+# dramatic on small-cap markets.
+
+# log rotation — daily at 02:00. User-level (no sudo). Keeps 14 days of
+# history per log file with delaycompress so today's archive stays
+# readable without zcat. State file lives in ~/.cache so it survives
+# repo updates.
+0 2 * * * /usr/sbin/logrotate --state /home/USER/.cache/polymarket-logrotate.state /home/USER/Coding/kalshi-trader/scripts/logrotate.conf
+
+# auto-resolve runner — every 15 minutes, walks every profile and resolves
+# any forecasts whose underlying markets have closed (public feed + Kalshi
+# settlements when authed). Without this the Track Record badges on the
+# Recommendations page stay 'untested' even after markets resolve.
+*/15 * * * * flock -n /tmp/polymarket_auto_resolve.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.ops.auto_resolve_runner >> data/shared/auto_resolve.log 2>&1'
+
+# bulk Deep Analysis — one model per night, staggered hourly. Each
+# walks the closing-soon market universe and logs ~50 forecasts per
+# model into the agentic_deep profile, tagged llm_deep:<model>.
+# Auto-resolve picks them up as markets settle, giving head-to-head
+# Brier-per-model on the same market universe. Each run takes ~25-40
+# min of GPU; logrotate sweeps the log files daily. Per-model flock
+# locks prevent next-day pile-up if a run drags past its hour.
+
+# polymarket data backup → /mnt/backups/kalshi-trader (90-day hardlinked snapshots)
+30 0 * * * flock -n /tmp/polymarket_backup.lock -c '/home/USER/Coding/kalshi-trader/scripts/backup.sh >/dev/null 2>&1'
+
+# baseball sidecar — nightly refresh at 04:15 (between the 4am bulk_deep and the 5am one)
+15 4 * * * flock -n /tmp/polymarket_baseball.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m baseball.runner >> data/shared/baseball.log 2>&1'
+
+# agentic baseball — model edges from the baseball sidecar, every 30 min offset by 10min.
+# min_gap 0.05 (5pp); min_days_to_expiry 0 (MLB games close same-day); 5% max position
+# because the model is unvalidated until enough resolve. Runs in PARALLEL to
+# strategy_runner_sports (ESPN consensus) on the same MLB markets so per-source
+# Brier on the Calibration page produces a head-to-head answer.
+
+# baseball lineups refresh — every 30 min. Lineups post 60-90 min
+# before first pitch so the nightly 04:15 baseball.runner misses them.
+# Light cycle: just lineups + batters + predictions, no heavy team-stat
+# refresh. Catches lineup-change predictions throughout game day.
+
+# Managed-exits sibling profiles — cron entries
+# ────────────────────────────────────────────────────────
+# Each line mirrors an existing agentic profile cron entry but adds
+# the full exit-management stack (TP/SL/vol-aware-trail/time-stop +
+# two-stage TP). The original unmanaged profile keeps running so we
+# get A/B head-to-head data.
+#
+# What changed since the first draft:
+#   - TP thresholds are NET of Kalshi fees now, so gross gain has to
+#     clear the fee drag (effective ~5–7pp tighter). The previous 0.30
+#     gross-equivalent threshold is roughly 0.25 net at typical prices.
+#   - --tp-to-trail-stop-pct 0.05 enables two-stage TP: hitting the TP
+#     threshold ARMS a tight 5%-off-peak trail instead of selling.
+#     Lets winners ride when momentum continues.
+#   - --trail-stop-atr-mult 2.0 is the volatility-aware trail. It uses
+#     K × σ of recent realized vol off peak instead of a fixed pct.
+#     Quiet markets get a tight trail; jumpy markets get room. Composes
+#     with the fixed --trail-stop-pct (whichever fires first wins).
+#   - --trail-vol-window-hours: 24 for fast markets (baseball/llm), 48
+#     for slower (consensus/favorites).
+#
+# Cost note: --trail-stop-atr-mult costs one extra get_price_history
+# call per open position per cycle. Keep position counts reasonable.
+
+# agentic_managed — market_consensus + full mgmt. Mirrors agentic line.
+*/30 * * * * flock -n /tmp/polymarket_strategy_consensus_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.arms.strategy_runner --profile agentic_managed --strategy market_consensus --bankroll 1000 --max-position-pct 0.10 --min-gap 0.01 --max-markets 50 --closing-within-days 30 >> data/shared/strategy_runner_managed.log 2>&1'
+
+# agentic_favorites_managed — favorite_grind + full mgmt
+*/30 * * * * flock -n /tmp/polymarket_strategy_favorites_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.arms.strategy_runner --profile agentic_favorites_managed --strategy favorite_grind --bankroll 1000 --max-position-pct 0.05 --min-gap 0.02 --max-markets 100 >> data/shared/strategy_runner_favorites_managed.log 2>&1'
+
+# agentic_llm_managed — llm_forecast + full mgmt. Offset +15min.
+
+# agentic_baseball_managed — baseball_winprob + SL/time-stop only. Offset :10/:40.
+# NO trailing stops: baseball markets resolve to $0/$1 within hours.
+# The model edge is pre-game; intra-game price swings are efficient
+# reactions to game state our model does not see. ATR trail was firing
+# on normal in-game vol (all 7 exits were losses, 0% win rate).
+# SL 0.40 catches true blowouts. Time-stop 1.5d ensures cleanup.
+
+# agentic_oscillation_momentum_managed — inverted oscillation strategy.
+# Backtest (90d, n=2155 markets, lead 48h, fees on): +8.9% ROI with
+# max_position_pct=0.05, hit rate 60.9%. P&L is fat-tail-driven
+# (top 5 wins = 229% of total P&L) — treat as paper-trading until
+# accumulated live data confirms or refutes the edge. Needs
+# --snapshot-history-days; max_markets capped at 50 to bound API load.
+5,35 * * * * flock -n /tmp/polymarket_strategy_osc_momentum_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.arms.strategy_runner --profile agentic_oscillation_momentum_managed --strategy oscillation_momentum --bankroll 1000 --max-position-pct 0.05 --min-gap 0.05 --max-markets 50 --snapshot-history-days 30 >> data/shared/strategy_runner_oscillation_momentum.log 2>&1'
+
+# portfolio snapshotter — 4x daily (every 6h), builds value chart without UI visits
+0 0,6,12,18 * * * flock -n /tmp/polymarket_snapshot.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.ops.snapshot_runner >> data/shared/snapshot_runner.log 2>&1'
+# RETIRED 2026-08-17 (R-17): mlb_deep_primer.py moved to attic/ — its only consumer (the deep close-game arm) was retired 2026-06-19.
+#0 15 * * * flock -n /tmp/polymarket_mlb_primer.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python mlb_deep_primer.py >> data/shared/mlb_deep_primer.log 2>&1'
+#0 22 * * * flock -n /tmp/polymarket_mlb_primer.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python mlb_deep_primer.py >> data/shared/mlb_deep_primer.log 2>&1'
+
+# WNBA sidecar — 2nd sport (docs/sports-model-playbook.md). Nightly refresh
+# at 04:30 (after baseball's 04:15) for teams/standings, plus a 17:00 UTC
+# (early afternoon ET) refresh so the day's predictions are fresh before
+# evening tip and the prior day's finals get settled. Runner pulls a 4-day
+# forward window so upcoming games are in state before their markets trade.
+30 4 * * * flock -n /tmp/polymarket_wnba.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m wnba.runner >> data/shared/wnba.log 2>&1'
+0 17 * * * flock -n /tmp/polymarket_wnba.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m wnba.runner >> data/shared/wnba.log 2>&1'
+
+# WNBA favorite-hold paper arm — buy the model's moderate-favorite side
+# (P(YES) 0.55-0.70), hold to resolution. The favorite-longshot-bias bet
+# (docs/strategies.md §17). Every 30 min during the season; discovers WNBA
+# markets via the events path (they don't surface in the volume feed).
+# Depends on wnba.runner having today's predictions in state.
+5,35 * * * * flock -n /tmp/polymarket_wnba_fav.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.arms.wnba_runner >> data/shared/wnba_favorite.log 2>&1'
+
+# Tennis sidecar — nightly Elo refresh at 04:45 (after baseball 04:15, wnba 04:30).
+# Recomputes Elo from the matches table + tops up recent tournaments.
+45 4 * * * flock -n /tmp/polymarket_tennis.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m tennis.runner >> data/shared/tennis.log 2>&1'
+
+# Tennis Elo value paper arm — bet model-mispriced sides (K-decay guarded),
+# hold to resolution. Every 30 min during tournaments. Discovers ATP/WTA
+# match markets via the events path (low-volume, not in the volume feed).
+20,50 * * * * flock -n /tmp/polymarket_tennis_value.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.arms.tennis_runner >> data/shared/tennis_value.log 2>&1'
+
+# WNBA evening cadence — hourly across the US game+finals window (23:00-06:00
+# UTC) so finished games land in state (status=post) within ~1h, enabling
+# the sidecar's fast-resolution before Kalshi settles (~1-2 days). Shares the
+# wnba.lock with the 04:30/17:00 refreshes so it can't overlap them.
+0 23,0,1,2,3,5,6 * * * flock -n /tmp/polymarket_wnba.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m wnba.runner >> data/shared/wnba.log 2>&1'
+# Tennis daytime refresh — pull finished match results + recompute Elo across
+# the active global window (09-21 UTC, every 3h) so predictions and paper
+# positions settle same-day instead of waiting for the 04:45 nightly. Shares
+# /tmp/polymarket_tennis.lock with the nightly so the two can never overlap.
+17 9,12,15,18,21 * * * flock -n /tmp/polymarket_tennis.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m tennis.runner >> data/shared/tennis.log 2>&1'
+
+
+# storm-detection trigger (edge-search candidate A, 2026-08-24): pages once
+# when a named storm exists or a per-storm Kalshi series lists. Runs ~35 min
+# after each NHC advisory slot (5/11 AM/PM ET = 09/15/21/03 UTC in EDT).
+35 3,9,15,21 * * * flock -n /tmp/polymarket_storm_watch.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python -m pm.research.storm_watch >> data/shared/storm_watch.log 2>&1'

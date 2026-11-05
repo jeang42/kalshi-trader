@@ -1,0 +1,8 @@
+[Unit]
+Description=Close-game scalper stop-loss A/B head-to-head check (one-shot report)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python closegame_stop_check.py
+Environment=PYTHONUNBUFFERED=1

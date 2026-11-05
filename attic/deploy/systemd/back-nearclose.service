@@ -1,0 +1,24 @@
+[Unit]
+Description=Back-nearclose — near-close favorite-back paper arm (buy YES 0.90-0.98)
+After=network-online.target
+
+# Added 2026-08-11 (P1/R-10): nothing previously reported a failure.
+OnFailure=polymarket-alert@%n.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+Environment=PYTHONUNBUFFERED=1
+# Boot stagger (2026-08-17): the seven daemons all start at boot at once and
+# their first discovery cycles 429'd each other on 2026-08-16. Each unit
+# waits a different number of seconds so the fleet comes up spaced ~8 s
+# apart without anyone at the keyboard. Also gives the network time to
+# settle after boot. Applies to every start, so a manual restart of this
+# unit is delayed by 24 s too — harmless.
+ExecStartPre=/bin/sleep 24
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.arms.back_nearclose --loop --interval 900
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

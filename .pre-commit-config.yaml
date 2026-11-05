@@ -1,0 +1,37 @@
+# Pre-commit hooks. To activate:
+#   pip install pre-commit
+#   pre-commit install
+# After that, `git commit` runs ruff + mypy automatically. Skip with `--no-verify`
+# only when you have a deliberate reason — CI will still enforce both.
+
+repos:
+  # Built-in housekeeping
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  # Ruff — lint + format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  # mypy — type check on the four non-Streamlit modules
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^(polymarket_client|portfolio|calibration|alerts|risk|profiles|provider|kalshi_client|backtest|crypto_data|edges|llm_data|llm_matcher|llm_cache|sports_data|manifold_data|macro_data|slippage|book_archive|book_poller|strategy_runner|backtest_history|kalshi_auth|kalshi_orders|llm_deep_analysis|web_context|auto_resolve_runner|bulk_deep_analysis|atomic_io|live_gates|backup_sqlite|execution)\.py$
+        additional_dependencies:
+          # No pandas-stubs: see the note in .github/workflows/ci.yml —
+          # it reports ~39 pre-existing errors and must match CI.
+          - types-requests
+          - types-python-dateutil

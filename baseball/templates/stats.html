@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}⚾ Stats & Insights{% endblock %}
+{% block content %}
+
+<h1 class="page-title">Stats & Insights</h1>
+
+<div class="games-date-picker">
+  <span class="muted">
+    Coverage: {{ coverage.teams_loaded }} teams ·
+    {{ "{:,}".format(coverage.plays_total) }} plays ·
+    {{ coverage.final_games }} final games ·
+    {{ coverage.date_min }} → {{ coverage.date_max }}
+  </span>
+</div>
+
+<section class="insight-grid">
+
+  <div class="block">
+    <h2 class="section-title">🥇 Top 10 by model strength</h2>
+    <table class="ratings-table">
+      <thead><tr><th>#</th><th>Team</th><th>Record</th><th>RD/G</th><th>Pyth</th><th>Strength</th></tr></thead>
+      <tbody>
+        {% for t in ratings_top %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong> <span class="muted">{{ t.short_name }}</span></td>
+            <td>{{ t.wins }}-{{ t.losses }}</td>
+            <td>{{ "%+.2f"|format(t.run_diff_per_game) }}</td>
+            <td>{{ "%.3f"|format(t.pythagorean) }}</td>
+            <td><strong>{{ "%.3f"|format(t.strength) }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">📉 Bottom 5</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>Record</th><th>RD/G</th><th>Strength</th></tr></thead>
+      <tbody>
+        {% for t in ratings_bot %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong> <span class="muted">{{ t.short_name }}</span></td>
+            <td>{{ t.wins }}-{{ t.losses }}</td>
+            <td>{{ "%+.2f"|format(t.run_diff_per_game) }}</td>
+            <td>{{ "%.3f"|format(t.strength) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🎯 Current model edges — today ({{ today_iso }})</h2>
+    {% if not edges_today %}
+      <p class="muted">No edges available for today right now (Kalshi may be quiet or fetch failed). Refresh in 5 minutes.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead><tr><th>Matchup</th><th>YES</th><th>Market</th><th>Model</th><th>Gap</th></tr></thead>
+        <tbody>
+          {% for e in edges_today %}
+            <tr>
+              <td class="muted">{{ e.matchup }}</td>
+              <td><strong>{{ e.yes_team }}</strong></td>
+              <td>{{ "%.0f%%"|format(e.market_yes * 100) }}</td>
+              <td>{{ "%.1f%%"|format(e.model_yes * 100) }}</td>
+              <td class="{% if e.gap > 0 %}gap-pos{% else %}gap-neg{% endif %}">
+                {{ "%+.1fpp"|format(e.gap * 100) }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🔮 Current model edges — tomorrow ({{ tomorrow_iso }})</h2>
+    {% if not edges_tomorrow %}
+      <p class="muted">No edges for tomorrow yet — Kalshi may not have posted tomorrow's slate.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead><tr><th>Matchup</th><th>YES</th><th>Market</th><th>Model</th><th>Gap</th></tr></thead>
+        <tbody>
+          {% for e in edges_tomorrow %}
+            <tr>
+              <td class="muted">{{ e.matchup }}</td>
+              <td><strong>{{ e.yes_team }}</strong></td>
+              <td>{{ "%.0f%%"|format(e.market_yes * 100) }}</td>
+              <td>{{ "%.1f%%"|format(e.model_yes * 100) }}</td>
+              <td class="{% if e.gap > 0 %}gap-pos{% else %}gap-neg{% endif %}">
+                {{ "%+.1fpp"|format(e.gap * 100) }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">⚡ Hottest offenses (R/G)</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>R/G</th><th>R</th><th>GP</th></tr></thead>
+      <tbody>
+        {% for t in offense_leaders %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong></td>
+            <td><strong>{{ "%.2f"|format(t.runs_per_game) }}</strong></td>
+            <td>{{ t.runs }}</td>
+            <td>{{ t.games }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🛡️ Stingiest pitching (RA/G)</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>RA/G</th><th>RA</th><th>GP</th></tr></thead>
+      <tbody>
+        {% for t in pitching_leaders %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong></td>
+            <td><strong>{{ "%.2f"|format(t.runs_allowed_per_game) }}</strong></td>
+            <td>{{ t.runs_allowed }}</td>
+            <td>{{ t.games }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">💥 Home Run leaders</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>HRs</th></tr></thead>
+      <tbody>
+        {% for t in hr_leaders %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong> <span class="muted">{{ t.name }}</span></td>
+            <td><strong>{{ t.n }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🎯 Strikeout pitching leaders</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>K's</th></tr></thead>
+      <tbody>
+        {% for t in k_leaders %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong> <span class="muted">{{ t.name }}</span></td>
+            <td><strong>{{ t.n }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🔥 Hottest (last 15 days)</h2>
+    {% if not recent_hot %}
+      <p class="muted">Not enough recent-window data yet.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead><tr><th>Team</th><th>Record</th><th>RD/G</th><th>GP</th></tr></thead>
+        <tbody>
+          {% for t in recent_hot %}
+            <tr>
+              <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong> <span class="muted">{{ t.short_name }}</span></td>
+              <td><strong>{{ t.wins }}-{{ t.losses }}</strong></td>
+              <td class="gap-pos">{{ "%+.2f"|format(t.run_diff_per_game) }}</td>
+              <td class="muted">{{ t.games_played }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top: 8px; font-size: 11px;">
+        Blended into team strength at up to 30% weight (caps at 12 GP).
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">❄️ Coldest (last 15 days)</h2>
+    {% if not recent_cold %}
+      <p class="muted">Not enough recent-window data yet.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead><tr><th>Team</th><th>Record</th><th>RD/G</th><th>GP</th></tr></thead>
+        <tbody>
+          {% for t in recent_cold %}
+            <tr>
+              <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong> <span class="muted">{{ t.short_name }}</span></td>
+              <td><strong>{{ t.wins }}-{{ t.losses }}</strong></td>
+              <td class="gap-neg">{{ "%+.2f"|format(t.run_diff_per_game) }}</td>
+              <td class="muted">{{ t.games_played }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🏟️ Park factors — most hitter-friendly</h2>
+    {% if not park_factors_top %}
+      <p class="muted">Not enough data yet (need 5+ home games per park).</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead><tr><th>Park</th><th>Runs PF</th><th>HR PF</th><th>n</th></tr></thead>
+        <tbody>
+          {% for p in park_factors_top %}
+            <tr>
+              <td><strong>{{ p.abbreviation }}</strong></td>
+              <td class="{% if p.runs_factor > 1.0 %}gap-pos{% else %}gap-neg{% endif %}">
+                {{ "%.3f"|format(p.runs_factor) }}
+              </td>
+              <td>{% if p.hr_factor %}{{ "%.3f"|format(p.hr_factor) }}{% else %}—{% endif %}</td>
+              <td class="muted">{{ p.n_games }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top: 8px; font-size: 11px;">
+        Regressed toward 1.0 with 30-game prior. >1 = boosts runs vs league avg.
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🛡️ Park factors — most pitcher-friendly</h2>
+    {% if not park_factors_bot %}
+      <p class="muted">Not enough data yet.</p>
+    {% else %}
+      <table class="ratings-table">
+        <thead><tr><th>Park</th><th>Runs PF</th><th>HR PF</th><th>n</th></tr></thead>
+        <tbody>
+          {% for p in park_factors_bot %}
+            <tr>
+              <td><strong>{{ p.abbreviation }}</strong></td>
+              <td class="{% if p.runs_factor > 1.0 %}gap-pos{% else %}gap-neg{% endif %}">
+                {{ "%.3f"|format(p.runs_factor) }}
+              </td>
+              <td>{% if p.hr_factor %}{{ "%.3f"|format(p.hr_factor) }}{% else %}—{% endif %}</td>
+              <td class="muted">{{ p.n_games }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">🎲 Most one-run finals (high-variance teams)</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>1-run %</th><th>1-R</th><th>GP</th></tr></thead>
+      <tbody>
+        {% for t in one_run_leaders %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(t.team_id) }}" class="mini-logo" alt=""><strong>{{ t.abbreviation }}</strong></td>
+            <td><strong>{{ "%.0f%%"|format(t.pct * 100) }}</strong></td>
+            <td>{{ t.one_run }}</td>
+            <td>{{ t.games }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</section>
+
+<p class="note">
+  Edges refresh every 5 minutes (Kalshi pull is cached). Reload to force-refresh.
+  All probabilities are <strong>YES-side perspective</strong> on the Kalshi market.
+  Positive gap = the model thinks this YES is underpriced.
+</p>
+
+{% endblock %}

@@ -1,0 +1,12 @@
+# Daily fleet health digest. Pushes ONLY when something needs attention —
+# a digest that arrives every day regardless is muted within a week, and
+# then you have worse than nothing: the illusion of coverage.
+[Unit]
+Description=Daily polymarket fleet health digest
+OnFailure=polymarket-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.ops.health_digest
+TimeoutStartSec=300

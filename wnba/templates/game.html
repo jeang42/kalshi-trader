@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if game %}
+<section class="game-detail">
+  <a href="/" class="more-link">← back to today</a>
+  <h1 class="date-current">{{ game.away_abbr }} @ {{ game.home_abbr }}</h1>
+  <p class="muted">{{ game.game_date | dt }} · status: {{ game.status }}</p>
+
+  <div class="teams" style="max-width:520px;">
+    <div class="team-row {% if latest and latest.home_win_prob < 0.5 %}team-fav{% endif %}">
+      <img src="{{ logo_url(game.away_abbr) }}" alt="" class="team-logo">
+      <div class="team-info">
+        <span class="team-abbr">{{ game.away_abbr }}</span>
+        <span class="team-name">{{ game.away_name }}</span>
+      </div>
+      <span class="team-score">{% if game.away_score is not none %}{{ game.away_score }}{% endif %}</span>
+    </div>
+    <div class="at-symbol">@</div>
+    <div class="team-row {% if latest and latest.home_win_prob >= 0.5 %}team-fav{% endif %}">
+      <img src="{{ logo_url(game.home_abbr) }}" alt="" class="team-logo">
+      <div class="team-info">
+        <span class="team-abbr">{{ game.home_abbr }}</span>
+        <span class="team-name">{{ game.home_name }}</span>
+      </div>
+      <span class="team-score">{% if game.home_score is not none %}{{ game.home_score }}{% endif %}</span>
+    </div>
+  </div>
+
+  {% if latest %}
+    {% set home_pct = (latest.home_win_prob * 100) | round(0, 'common') %}
+    {% set away_pct = 100 - home_pct %}
+    <div class="winprob-bar" style="max-width:520px;margin-top:1rem;">
+      <div class="winprob-away" style="flex: {{ away_pct }};">{{ game.away_abbr }} {{ away_pct|int }}%</div>
+      <div class="winprob-home" style="flex: {{ home_pct }};">{{ home_pct|int }}% {{ game.home_abbr }}</div>
+    </div>
+    <p class="muted">model v{{ latest.model_version }} · computed {{ latest.computed_at | dt }}
+      {% if latest.actual_winner %}· <strong>final: {{ latest.actual_winner }} won</strong>{% endif %}
+    </p>
+  {% else %}
+    <p class="muted">No model prediction stored for this game.</p>
+  {% endif %}
+</section>
+
+<section class="sidebar-blocks">
+  <div class="block">
+    <h2 class="section-title">Model inputs</h2>
+    <dl class="kv">
+      {% for k, v in inputs.items() %}
+        <dt>{{ k }}</dt><dd>{{ v }}</dd>
+      {% else %}
+        <dt class="muted">no inputs recorded</dt><dd></dd>
+      {% endfor %}
+    </dl>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Team strength</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Team</th><th>Record</th><th>Pt diff/g</th><th>Strength</th></tr></thead>
+      <tbody>
+        {% for r in [away_rating, home_rating] %}
+          {% if r %}
+          <tr>
+            <td class="team-cell"><img src="{{ logo_url(r.abbreviation) }}" class="mini-logo" alt=""><strong>{{ r.abbreviation }}</strong></td>
+            <td>{{ r.wins }}-{{ r.losses }}</td>
+            <td>{{ "%+.1f"|format(r.point_diff_per_game) }}</td>
+            <td><strong>{{ "%.3f"|format(r.strength) }}</strong></td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+  <p>Game not found.</p>
+{% endif %}
+
+{% endblock %}

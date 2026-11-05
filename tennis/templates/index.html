@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="date-nav">
+  <a href="/?date={{ yesterday }}" class="date-btn">◀ {{ yesterday }}</a>
+  <h1 class="date-current">{{ target.strftime("%A · %B %-d, %Y") }}</h1>
+  <a href="/?date={{ tomorrow }}" class="date-btn">{{ tomorrow }} ▶</a>
+</section>
+
+<section class="slate">
+  {% if not matches %}
+    <div class="no-games">No tennis matches recorded for this date.</div>
+  {% else %}
+    <h2 class="section-title">{{ matches|length }} match{{ '' if matches|length == 1 else 'es' }}
+      {% if is_past %}· results{% else %}· model forecast{% endif %}</h2>
+    <table class="ratings-table">
+      <thead>
+        <tr><th>Tour</th><th>Match</th><th>Elo</th><th>Model P(p1)</th>
+            {% if is_past %}<th>Winner</th><th></th>{% endif %}</tr>
+      </thead>
+      <tbody>
+        {% for m in matches %}
+          <tr>
+            <td>{{ m.tour|upper }}</td>
+            <td>
+              {% if m.p1_name %}<a href="/player/{{ m.tour }}/{{ m.p1_id }}">{{ m.p1_name }}</a>{% else %}#{{ m.p1_id }}{% endif %}
+              vs
+              {% if m.p2_name %}<a href="/player/{{ m.tour }}/{{ m.p2_id }}">{{ m.p2_name }}</a>{% else %}#{{ m.p2_id }}{% endif %}
+              <span class="muted">{{ m.round_name }}</span>
+            </td>
+            {# Guard BOTH ratings: this checked only p1_elo and then rounded
+               p2_elo as well, so any match where one player is rated and the
+               other is not (a qualifier, a first appearance) raised
+               "NoneType doesn't define __round__" and 500'd the whole page. #}
+            <td>{% if m.p1_elo is not none and m.p2_elo is not none %}{{ m.p1_elo|round|int }} / {{ m.p2_elo|round|int }}{% else %}—{% endif %}</td>
+            <td>{% if m.p1_win_prob is not none %}<strong>{{ (m.p1_win_prob*100)|round|int }}%</strong>{% else %}—{% endif %}</td>
+            {% if is_past %}
+              <td><strong>{% if m.winner_id == m.p1_id %}{{ m.p1_name or m.p1_id }}{% elif m.winner_id %}{{ m.p2_name or m.p2_id }}{% endif %}</strong></td>
+              <td>{% if m.model_correct is true %}<span style="color:#16a34a;">✓</span>{% elif m.model_correct is false %}<span style="color:#dc2626;">✗</span>{% endif %}</td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+
+{% if edge_rows %}
+<section class="slate">
+  <h2 class="section-title">Live model vs market (open Kalshi markets)</h2>
+  <table class="ratings-table">
+    <thead><tr><th>Tour</th><th>YES side</th><th>Model</th><th>Market</th><th>Edge</th></tr></thead>
+    <tbody>
+      {% for m in edge_rows %}
+        <tr>
+          <td>{{ m.tour|upper }}</td>
+          <td>{% if m.yes_name %}<strong>{{ m.yes_name }}</strong> vs {{ m.opponent }}{% else %}<span class="muted">{{ m.question[:42] }} (unrated)</span>{% endif %}</td>
+          <td>{% if m.yes_prob is not none %}{{ (m.yes_prob*100)|round|int }}%{% else %}—{% endif %}</td>
+          <td>{% if m.market is not none %}{{ (m.market*100)|round|int }}%{% else %}—{% endif %}</td>
+          <td>{% if m.edge is not none %}<strong style="color:{% if m.edge>0 %}#16a34a{% else %}#dc2626{% endif %};">{{ (m.edge*100)|round|int }}pp</strong>{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="sidebar-blocks">
+  <div class="block">
+    <h2 class="section-title">ATP Elo — top 10</h2>
+    <table class="ratings-table">
+      <thead><tr><th>#</th><th>Player</th><th>Elo</th></tr></thead>
+      <tbody>
+        {% for p in atp_top %}<tr><td>{{ loop.index }}</td><td><a href="/player/atp/{{ p.id }}"><strong>{{ p.name }}</strong></a></td><td>{{ p.elo|round|int }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="block">
+    <h2 class="section-title">WTA Elo — top 10</h2>
+    <table class="ratings-table">
+      <thead><tr><th>#</th><th>Player</th><th>Elo</th></tr></thead>
+      <tbody>
+        {% for p in wta_top %}<tr><td>{{ loop.index }}</td><td><a href="/player/wta/{{ p.id }}"><strong>{{ p.name }}</strong></a></td><td>{{ p.elo|round|int }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="block">
+    <h2 class="section-title">Sidecar stats</h2>
+    <dl class="kv">
+      <dt>ATP rated</dt><dd>{{ stats.atp_rated }}</dd>
+      <dt>WTA rated</dt><dd>{{ stats.wta_rated }}</dd>
+      <dt>Matches in Elo</dt><dd>{{ stats.matches }}</dd>
+      <dt>Brier (n)</dt><dd>{% if stats.brier %}{{ "%.4f"|format(stats.brier) }} ({{ stats.brier_n }}){% else %}— ({{ stats.brier_n }}){% endif %}</dd>
+    </dl>
+  </div>
+</section>
+
+{% endblock %}

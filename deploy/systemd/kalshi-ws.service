@@ -1,0 +1,14 @@
+[Unit]
+Description=Kalshi WebSocket order book streamer (MLB markets)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.capture.kalshi_ws --archive-interval 15
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

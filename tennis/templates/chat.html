@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}🎾 Chat{% endblock %}
+{% block content %}
+
+<h1 class="page-title">Chat with the tennis analyst</h1>
+
+{% if not ollama_available %}
+<div class="no-games">
+  ⚠️ Ollama isn't reachable. Start it (<code>ollama serve</code>) or set
+  <code>OLLAMA_API_BASE</code>. The chat won't work until it's running.
+</div>
+{% endif %}
+
+<p class="muted">
+  The analyst has a live snapshot of the Elo ladders (ATP + WTA, computed
+  from this season's results). Ask about a matchup, who's hot, or how two
+  players compare. The Elo model is coarse — it'll say so. History lives in
+  this page until you reload.
+</p>
+
+<div id="chat-history" class="chat-history"></div>
+
+<form id="chat-form" class="chat-form"
+      hx-post="/chat/send" hx-target="#chat-history" hx-swap="beforeend"
+      hx-indicator="#chat-thinking"
+      hx-on::after-request="
+        if (event.detail.successful) {
+          this.querySelector('textarea[name=message]').value = '';
+          const last = document.querySelector('#chat-history [data-history]:last-child');
+          if (last) this.querySelector('input[name=history]').value = last.dataset.history;
+          document.querySelector('textarea[name=message]').focus();
+          this.scrollIntoView({block: 'end'});
+        }">
+  <input type="hidden" name="history" value="[]">
+  <div class="chat-input-row">
+    <textarea name="message" rows="2"
+              placeholder="e.g. 'How does Sinner's Elo compare to Alcaraz, and who'd the model favor?'"
+              required></textarea>
+    <div class="chat-controls">
+      <label class="chat-model-label">
+        Model
+        <select name="model">
+          {% for m in models %}<option value="{{ m }}" {% if m == default_model %}selected{% endif %}>{{ m }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="refresh-btn">Send</button>
+      <span id="chat-thinking" class="chat-thinking htmx-indicator">🎾 thinking…</span>
+    </div>
+  </div>
+</form>
+
+{% endblock %}

@@ -1,0 +1,14 @@
+[Unit]
+Description=Pre-positioning strategy evaluator (baseball in-game)
+After=network.target baseball-live.service kalshi-ws.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.arms.pre_position --loop --interval 10
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

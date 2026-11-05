@@ -1,0 +1,14 @@
+[Unit]
+Description=Crypto latency capture — (spot, Kalshi mid) time series to measure if the book lags Coinbase spot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python crypto_capture.py --loop --interval 20 --hours 2
+Restart=on-failure
+RestartSec=20
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

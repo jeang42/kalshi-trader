@@ -1,0 +1,14 @@
+[Unit]
+Description=Tennis capture — measures whether the Kalshi book lags in-match set/match events (react-and-hold step 2)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.capture.tennis_capture --loop --interval 45
+Restart=on-failure
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

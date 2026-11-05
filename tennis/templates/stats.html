@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section><h1 class="date-current">Stats & edges</h1></section>
+
+<section class="sidebar-blocks">
+  <div class="block" style="flex:2;">
+    <h2 class="section-title">Biggest live model-vs-market edges</h2>
+    {% if edges %}
+      <table class="ratings-table">
+        <thead><tr><th>Tour</th><th>YES side</th><th>Model</th><th>Market</th><th>Edge</th></tr></thead>
+        <tbody>
+          {% for m in edges %}
+            <tr>
+              <td>{{ m.tour|upper }}</td>
+              <td><strong>{{ m.yes_name }}</strong> vs {{ m.opponent }}</td>
+              <td>{{ (m.yes_prob*100)|round|int }}%</td>
+              <td>{{ (m.market*100)|round|int }}%</td>
+              <td><strong style="color:{% if m.edge>0 %}#16a34a{% else %}#dc2626{% endif %};">{{ (m.edge*100)|round|int }}pp</strong></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No open ATP/WTA markets with both a model rating and a market price right now.</p>
+    {% endif %}
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Clay specialists — ATP</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Player</th><th>Clay Elo</th></tr></thead>
+      <tbody>
+        {% for p in atp_clay %}<tr><td>{{ p.name }}</td><td>{{ p.elo|round|int }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Clay specialists — WTA</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Player</th><th>Clay Elo</th></tr></thead>
+      <tbody>
+        {% for p in wta_clay %}<tr><td>{{ p.name }}</td><td>{{ p.elo|round|int }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Hard-court — ATP</h2>
+    <table class="ratings-table">
+      <thead><tr><th>Player</th><th>Hard Elo</th></tr></thead>
+      <tbody>
+        {% for p in atp_hard %}<tr><td>{{ p.name }}</td><td>{{ p.elo|round|int }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2 class="section-title">Sidecar stats</h2>
+    <dl class="kv">
+      <dt>ATP rated</dt><dd>{{ stats.atp_rated }}</dd>
+      <dt>WTA rated</dt><dd>{{ stats.wta_rated }}</dd>
+      <dt>Matches in Elo</dt><dd>{{ stats.matches }}</dd>
+      <dt>Brier (n)</dt><dd>{% if stats.brier %}{{ "%.4f"|format(stats.brier) }} ({{ stats.brier_n }}){% else %}— ({{ stats.brier_n }}){% endif %}</dd>
+    </dl>
+  </div>
+</section>
+
+{% endblock %}

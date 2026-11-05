@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section>
+  <h1 class="date-current">Elo ratings</h1>
+  <p class="muted">Computed from {{ stats.matches }} match results this season
+  (whole field, not just ranked players). New/unseen players seed at 1500.</p>
+</section>
+
+<section class="sidebar-blocks">
+  <div class="block">
+    <h2 class="section-title">ATP ({{ atp|length }})</h2>
+    <table class="ratings-table">
+      <thead><tr><th>#</th><th>Player</th><th>Elo</th><th>ATP rank</th><th>Matches</th></tr></thead>
+      <tbody>
+        {% for p in atp %}
+          <tr><td>{{ loop.index }}</td><td><strong>{{ p.name }}</strong></td><td>{{ p.elo|round|int }}</td><td>{{ p.rank or "—" }}</td><td>{{ p.matches_played }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="block">
+    <h2 class="section-title">WTA ({{ wta|length }})</h2>
+    <table class="ratings-table">
+      <thead><tr><th>#</th><th>Player</th><th>Elo</th><th>WTA rank</th><th>Matches</th></tr></thead>
+      <tbody>
+        {% for p in wta %}
+          <tr><td>{{ loop.index }}</td><td><strong>{{ p.name }}</strong></td><td>{{ p.elo|round|int }}</td><td>{{ p.rank or "—" }}</td><td>{{ p.matches_played }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

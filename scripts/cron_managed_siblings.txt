@@ -1,0 +1,47 @@
+# Managed-exits sibling profiles — cron entries
+# ────────────────────────────────────────────────────────
+# HISTORY: These profiles originally ran full exit management (TP/SL/
+# vol-aware trail/time-stop). After analyzing results (2026-05-26):
+#   - 4,322 exits on agentic_llm_managed: 0% win rate, -$186K
+#   - 1,210 exits on agentic_managed: 0.2% win rate, -$13K
+#   - Every managed profile underperformed its unmanaged sibling
+#
+# ROOT CAUSE: prediction markets resolve to $0/$1. Stop-losses lock in
+# losses on positions that would have come back at resolution. The LLM
+# forecasts are genuinely good (gemma3 Brier 0.095) but the exit
+# management was destroying the edge by selling on noise.
+#
+# DECISION: exit management DISABLED on all non-baseball profiles.
+# These now mirror the unmanaged profiles (hold to resolution) but
+# keep the --max-positions-per-event cap. The "managed" name is
+# retained for profile continuity. Exit flags are preserved in
+# comments below for reference if we ever revisit.
+#
+# EXCEPTION: agentic_baseball_managed keeps SL/time-stop because
+# baseball games resolve within hours and the in-game swing thesis
+# requires position management. This is a different strategy class.
+#
+# Original exit flags (all non-baseball):
+#   --take-profit-pct 0.25 --tp-to-trail-stop-pct 0.05
+#   --stop-loss-pct 0.25 --trail-stop-atr-mult 2.0
+#   --trail-vol-window-hours 24-48 --time-stop-days 7-30
+
+# agentic_managed — market_consensus, hold to resolution.
+*/30 * * * * flock -n /tmp/polymarket_strategy_consensus_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python strategy_runner.py --profile agentic_managed --strategy market_consensus --bankroll 1000 --max-position-pct 0.10 --min-gap 0.01 --max-markets 50 --closing-within-days 30 --max-positions-per-event 2 >> data/shared/strategy_runner_managed.log 2>&1'
+
+# agentic_favorites_managed — favorite_grind, hold to resolution.
+*/30 * * * * flock -n /tmp/polymarket_strategy_favorites_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python strategy_runner.py --profile agentic_favorites_managed --strategy favorite_grind --bankroll 1000 --max-position-pct 0.05 --min-gap 0.02 --max-markets 100 --max-positions-per-event 2 >> data/shared/strategy_runner_favorites_managed.log 2>&1'
+
+# agentic_llm_managed — llm_forecast, hold to resolution. Offset +15min.
+15,45 * * * * flock -n /tmp/polymarket_strategy_llm_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python strategy_runner.py --profile agentic_llm_managed --strategy llm_forecast --bankroll 1000 --max-position-pct 0.05 --min-gap 0.05 --max-markets 50 --closing-within-days 60 --max-positions-per-event 2 --strategy-arg min_gap=0.05 --strategy-arg min_days_to_expiry=2.0 --strategy-arg model=qwen3:32b >> data/shared/strategy_runner_llm_managed.log 2>&1'
+
+# agentic_oscillation_momentum_managed — hold to resolution.
+5,35 * * * * flock -n /tmp/polymarket_strategy_osc_momentum_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python strategy_runner.py --profile agentic_oscillation_momentum_managed --strategy oscillation_momentum --bankroll 1000 --max-position-pct 0.05 --min-gap 0.05 --max-markets 50 --snapshot-history-days 30 >> data/shared/strategy_runner_oscillation_momentum.log 2>&1'
+
+# agentic_baseball_managed — baseball_winprob + SL/time-stop ONLY.
+# KEEPS exit management: baseball games resolve within hours, and the
+# in-game swing thesis requires active position management. SL 0.40
+# catches true blowouts; time-stop 1.5d ensures cleanup if resolution
+# is delayed. NO trailing stops — intra-game vol is efficient price
+# discovery, not tradeable signal at our current latency.
+10,40 * * * * flock -n /tmp/polymarket_strategy_baseball_mgmt.lock -c 'cd /home/USER/Coding/kalshi-trader && .venv/bin/python strategy_runner.py --profile agentic_baseball_managed --strategy baseball_winprob --bankroll 1000 --max-position-pct 0.05 --min-gap 0.05 --max-markets 2000 --closing-within-days 5.0 --strategy-arg min_gap=0.05 --stop-loss-pct 0.40 --time-stop-days 1.5 >> data/shared/strategy_runner_baseball_managed.log 2>&1'

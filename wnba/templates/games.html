@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section>
+  <h1 class="date-current">Recent games</h1>
+  <p class="muted">Finished games, newest first — model prediction vs actual
+  result. ✓ = the model's favored side won.</p>
+
+  {% if not games %}
+    <div class="no-games">No finished games recorded yet.</div>
+  {% else %}
+    <table class="ratings-table">
+      <thead>
+        <tr><th>Date</th><th>Matchup</th><th>Final</th><th>Model P(home)</th><th>Result</th></tr>
+      </thead>
+      <tbody>
+        {% for g in games %}
+          <tr>
+            <td>{{ g.game_date | dt }}</td>
+            <td class="team-cell">
+              <a href="/game/{{ g.event_id }}">{{ g.away_abbr }} @ {{ g.home_abbr }}</a>
+            </td>
+            <td>
+              {% if g.away_score is not none %}{{ g.away_score }}–{{ g.home_score }}{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if g.home_win_prob is not none %}{{ (g.home_win_prob * 100)|round|int }}%{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if g.winner_abbr %}<strong>{{ g.winner_abbr }}</strong>{% endif %}
+              {% if g.model_correct is true %}<span style="color:#16a34a;">✓</span>
+              {% elif g.model_correct is false %}<span style="color:#dc2626;">✗</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}⚾ Baseball{% endblock %}</title>
+  <!-- Apply theme BEFORE the stylesheet loads to avoid a light-flash. -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("baseball-theme");
+        var prefersDark = window.matchMedia &&
+                          window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = saved || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) { /* localStorage blocked — fall back to default light */ }
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="ball"></span>
+      <a href="/" class="brand-link">Baseball</a>
+      <span class="model-tag">Pythag + SP-ERA · v{{ "0.1" }}</span>
+    </div>
+    <nav class="topnav">
+      <a href="/">Today</a>
+      <a href="/games">Recent Games</a>
+      <a href="/stats">Stats</a>
+      <a href="/analysis">Analysis</a>
+      <a href="/chat">Chat</a>
+      <a href="/standings">Standings</a>
+      <a href="https://www.mlb.com/scores" target="_blank" rel="noopener">MLB.com ↗</a>
+    </nav>
+    <div class="health">
+      {% set s = health.status %}
+      <span class="badge badge-{{ s }}">
+        {% if s == 'ok' %}🟢{% elif s == 'degraded' %}🟡{% else %}🔴{% endif %}
+        {{ s }}
+      </span>
+      <span class="health-detail">{{ health.detail }}</span>
+      {% if health.last_update_ts %}
+        <span class="health-ts">updated {{ health.last_update_ts.isoformat() | dt }}</span>
+      {% endif %}
+      <button class="refresh-btn"
+              hx-post="/refresh"
+              hx-target="#refresh-status"
+              hx-swap="innerHTML">↻ refresh</button>
+      <span id="refresh-status"></span>
+      <button class="theme-toggle"
+              id="theme-toggle"
+              type="button"
+              aria-label="Toggle dark mode"
+              title="Toggle dark mode">
+        <span class="theme-icon" id="theme-icon">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <script>
+    (function () {
+      var btn = document.getElementById("theme-toggle");
+      var icon = document.getElementById("theme-icon");
+      if (!btn) return;
+      function applyIcon() {
+        icon.textContent =
+          document.documentElement.getAttribute("data-theme") === "dark" ? "☀️" : "🌙";
+      }
+      applyIcon();
+      btn.addEventListener("click", function () {
+        var current = document.documentElement.getAttribute("data-theme") || "light";
+        var next = current === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem("baseball-theme", next); } catch (e) {}
+        applyIcon();
+      });
+    })();
+  </script>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="bottom">
+    <span>data: MLB Stats API · sidecar v0.1 · LAN-only</span>
+  </footer>
+</body>
+</html>

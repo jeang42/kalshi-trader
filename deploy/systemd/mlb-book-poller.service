@@ -1,0 +1,14 @@
+[Unit]
+Description=MLB Kalshi order book poller
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.capture.mlb_book_poller --loop --interval 15 --idle-interval 120 --discovery-interval 300
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

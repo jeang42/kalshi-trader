@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}⚾ {{ game.away_abbr if game else '?' }} @ {{ game.home_abbr if game else '?' }}{% endblock %}
+{% block content %}
+
+{% if game %}
+<section class="game-detail">
+  <div class="back-link"><a href="/">← Back to today</a></div>
+
+  <h1 class="game-title">
+    <img src="{{ logo_url(game.away_team_id) }}" class="big-logo" alt="{{ game.away_abbr }}">
+    {{ game.away_name }}
+    <span class="at-symbol-big">@</span>
+    <img src="{{ logo_url(game.home_team_id) }}" class="big-logo" alt="{{ game.home_abbr }}">
+    {{ game.home_name }}
+  </h1>
+
+  <div class="game-meta">
+    <span class="status-{{ game.status|lower|replace(' ','-') }}">{{ game.status }}</span>
+    <span>{{ game.game_date | dt }}</span>
+    {% if game.away_score is not none %}
+      <span class="final-score">{{ game.away_score }} — {{ game.home_score }}</span>
+    {% endif %}
+  </div>
+
+  {% if latest %}
+    {% set hp = (latest.home_win_prob * 100) | round(0, 'common') | int %}
+    {% set ap = 100 - hp %}
+    <div class="big-winprob">
+      <div class="big-winprob-away" style="flex: {{ ap }};">
+        <span class="big-abbr">{{ latest.away_team }}</span>
+        <span class="big-pct">{{ ap }}%</span>
+      </div>
+      <div class="big-winprob-home" style="flex: {{ hp }};">
+        <span class="big-pct">{{ hp }}%</span>
+        <span class="big-abbr">{{ latest.home_team }}</span>
+      </div>
+    </div>
+    <p class="muted center">Model: {{ latest.model_version }} · computed {{ latest.computed_at | dt }}</p>
+  {% endif %}
+
+  <section class="block">
+    <h2 class="section-title">Probable starters</h2>
+    <div class="pitcher-cards">
+      <div class="pitcher-card">
+        <div class="pitcher-team">{{ game.away_abbr }} (away)</div>
+        <div class="pitcher-card-name">{{ game.away_pitcher_name or "TBD / bullpen game" }}</div>
+        {% if game.away_pitcher_era is not none %}
+          <div class="pitcher-card-era">{{ "%.2f"|format(game.away_pitcher_era) }} ERA</div>
+        {% endif %}
+      </div>
+      <div class="pitcher-card">
+        <div class="pitcher-team">{{ game.home_abbr }} (home)</div>
+        <div class="pitcher-card-name">{{ game.home_pitcher_name or "TBD / bullpen game" }}</div>
+        {% if game.home_pitcher_era is not none %}
+          <div class="pitcher-card-era">{{ "%.2f"|format(game.home_pitcher_era) }} ERA</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if predictions|length > 1 %}
+    <section class="block">
+      <h2 class="section-title">Line movement</h2>
+      <table class="ratings-table">
+        <thead>
+          <tr><th>Computed</th><th>P(home wins)</th><th>Model</th></tr>
+        </thead>
+        <tbody>
+          {% for p in predictions %}
+            <tr>
+              <td>{{ p.computed_at | dt }}</td>
+              <td><strong>{{ "%.1f%%"|format(p.home_win_prob * 100) }}</strong></td>
+              <td><span class="muted">{{ p.model_version }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  {% if latest and latest.inputs %}
+    <section class="block">
+      <h2 class="section-title">Model inputs</h2>
+      <pre class="inputs">{{ latest.inputs }}</pre>
+    </section>
+  {% endif %}
+
+  {% if plays %}
+    <section class="block">
+      <h2 class="section-title">Play-by-play · {{ plays|length }} recorded</h2>
+      <table class="ratings-table playbyplay">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Inning</th>
+            <th>Event</th>
+            <th>Description</th>
+            <th>Score</th>
+            <th>Home WP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in plays %}
+            <tr class="play-row kind-{{ (p.event_type or 'unknown')|lower|replace(' ','-') }}">
+              <td class="muted">{{ loop.index }}</td>
+              <td>
+                <span class="inning-half">{{ (p.half_inning or '')[0]|upper }}</span>
+                {{ p.inning or '?' }}
+              </td>
+              <td><strong>{{ p.event_type or '—' }}</strong></td>
+              <td class="play-descr">{{ p.description or '' }}</td>
+              <td class="play-score">{{ p.away_score_after }}-{{ p.home_score_after }}</td>
+              <td>{% if p.home_win_prob is not none %}{{ "%.1f%%"|format(p.home_win_prob) }}{% else %}—{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+</section>
+{% else %}
+  <p>Game data not found.</p>
+{% endif %}
+
+{% endblock %}

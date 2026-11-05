@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="30">
+  <title>🎛 Control Plane</title>
+  <link rel="icon" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    // Apply saved/system theme BEFORE paint (avoids a flash, and survives the
+    // 30s meta-refresh since it re-runs every load).
+    (function () {
+      var t = localStorage.getItem("cp-theme");
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+  <style>
+    /* Theme tokens. Light = defaults; dark overrides on [data-theme=dark]. */
+    :root { --cp-bg: #ffffff; --cp-fg: #1a1a1a; --cp-border: #88888844;
+            --cp-pos: #2e7d32; --cp-neg: #c62828;
+            --cp-ok-bg: #1b5e2022; --cp-bad-bg: #b71c1c22; }
+    [data-theme="dark"] {
+      --cp-bg: #14171c; --cp-fg: #d7dae0; --cp-border: #ffffff22;
+      --cp-pos: #66bb6a; --cp-neg: #ef5350;
+      --cp-ok-bg: #2e7d3233; --cp-bad-bg: #c6282833;
+    }
+    html, body { background: var(--cp-bg) !important; color: var(--cp-fg) !important; }
+    h1, h2, h3, p, td, th, .cp-chip { color: var(--cp-fg); }
+    a { color: var(--cp-pos); }
+    .cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
+    .cp-chip { padding: 6px 8px; border-radius: 6px; font-size: 0.85em; border: 1px solid var(--cp-border); }
+    .cp-ok { background: var(--cp-ok-bg); border-color: var(--cp-pos); }
+    .cp-bad { background: var(--cp-bad-bg); border-color: var(--cp-neg); }
+    .cp-dim { opacity: 0.65; }
+    .cp-section { margin: 18px 0; }
+    .cp-num { font-weight: 700; }
+    .pos { color: var(--cp-pos); } .neg { color: var(--cp-neg); }
+    table.cp { border-collapse: collapse; width: 100%; }
+    table.cp td, table.cp th { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--cp-border); font-size: 0.9em; }
+    #cp-theme-toggle { float: right; cursor: pointer; background: var(--cp-ok-bg);
+      border: 1px solid var(--cp-border); color: var(--cp-fg); border-radius: 6px;
+      padding: 6px 12px; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="cp-theme-toggle" onclick="cpToggleTheme()">🌓 Theme</button>
+    <h1>🎛 Control Plane</h1>
+    <p class="cp-dim">{{ d.services_up }}/{{ d.services_total }} services up
+      · generated {{ d.generated }} · auto-refresh 30s</p>
+  </header>
+  <script>
+    function cpToggleTheme() {
+      var cur = document.documentElement.getAttribute("data-theme");
+      var next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("cp-theme", next);
+    }
+  </script>
+
+  <div class="cp-section">
+    <h2>Services</h2>
+    {% for group, names in d.service_groups.items() %}
+      <h3>{{ group }}</h3>
+      <div class="cp-grid">
+        {% for s in d.services if s.group == group %}
+          <div class="cp-chip {{ 'cp-ok' if s.ok else 'cp-bad' }}">
+            {{ s.name }}<br>
+            <span class="cp-dim">{{ s.active }}{% if s.enabled and s.enabled != 'enabled' %} · {{ s.enabled }}{% endif %}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="cp-section">
+    <h2>Data panels (research accruing)</h2>
+    <table class="cp">
+      <tr><th>Panel</th><th>Rows</th><th>Detail</th></tr>
+      {% for p in d.panels %}
+        <tr class="{{ '' if p.ok else 'cp-dim' }}">
+          <td>{{ p.name }}</td><td class="cp-num">{{ p.count }}</td><td class="cp-dim">{{ p.detail }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="cp-section">
+    <h2>Paper arms (P&amp;L, net of fees)</h2>
+    <table class="cp">
+      <tr><th>Arm</th><th>n</th><th>Net $</th><th>Win %</th></tr>
+      {% for a in d.arms %}
+        <tr>
+          <td>{{ a.label }}</td><td>{{ a.n }}</td>
+          <td class="cp-num {{ 'pos' if (a.net is number and a.net >= 0) else 'neg' }}">{{ a.net }}</td>
+          <td>{{ a.win if a.win is not none else '—' }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {% if d.sidecars %}
+  <div class="cp-section">
+    <h2>Sidecars</h2>
+    <table class="cp">
+      <tr><th>Sidecar</th><th>Status</th><th>Detail</th><th>Errors 24h</th></tr>
+      {% for s in d.sidecars %}
+        <tr><td>{{ s.name }}</td>
+          <td class="{{ 'pos' if s.status == 'ok' else 'neg' }}">{{ s.status }}</td>
+          <td class="cp-dim">{{ s.detail }}</td><td>{{ s.errors_24h }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="cp-section">
+    <h2>Live account</h2>
+    {% if d.account %}
+      <p>Settled cash <span class="cp-num">${{ '%.2f'|format(d.account.balance) }}</span>
+         · pending payout ${{ '%.2f'|format(d.account.payout) }}</p>
+    {% else %}
+      <p class="cp-dim">not configured / read unavailable (paper mode)</p>
+    {% endif %}
+  </div>
+</body>
+</html>

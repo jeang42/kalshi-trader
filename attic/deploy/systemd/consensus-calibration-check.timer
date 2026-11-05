@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the consensus calibration check tomorrow morning (one-shot)
+
+[Timer]
+# Morning report ~9am local (CDT). Persistent so it still runs if the box
+# was off at that instant.
+OnCalendar=2026-06-05 09:07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

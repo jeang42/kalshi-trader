@@ -1,0 +1,8 @@
+[Unit]
+Description=Consensus calibration check (ESPN gate over/under-confidence) — one-shot report
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python consensus_calibration_check.py
+Environment=PYTHONUNBUFFERED=1

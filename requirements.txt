@@ -1,0 +1,27 @@
+streamlit>=1.35.0
+pandas>=2.0.0
+numpy>=1.26.0
+matplotlib>=3.8.0
+plotly>=5.20.0
+requests>=2.31.0
+python-dateutil>=2.8.0
+python-dotenv>=1.0.0
+cryptography>=42.0.0
+scipy>=1.11.0            # feed_latency.estimate_lag (signal cross-correlation)
+fastapi>=0.115.0         # the four sidecar / control-plane web UIs
+uvicorn>=0.30.0
+jinja2>=3.1.0
+websockets>=12.0         # kalshi_ws streaming client
+
+# Heavy / optional: only needed to RUN the audio capture pipeline, not to
+# import or test the rest of the tree. Install explicitly when you need it:
+#   pip install faster-whisper
+
+# testing + linting (dev)
+pytest>=8.0.0
+httpx>=0.27.0            # starlette TestClient, used by tests/test_web_auth.py
+pytest-cov>=5.0.0
+ruff>=0.6.0
+mypy>=1.10.0
+types-requests
+types-python-dateutil

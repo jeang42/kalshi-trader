@@ -1,0 +1,14 @@
+[Unit]
+Description=Reactive scalper — in-game reaction paper arm (high-leverage scoring plays)
+After=network.target baseball-live.service kalshi-ws.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python -m pm.arms.reactive_scalper --profile agentic_reactive --loop --interval 12
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

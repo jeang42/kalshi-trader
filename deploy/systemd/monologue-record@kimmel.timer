@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly Kimmel monologue capture (ABC, 22:30 CT Mon-Fri)
+
+[Timer]
+OnCalendar=Mon..Fri 22:30
+Persistent=false
+
+[Install]
+WantedBy=timers.target

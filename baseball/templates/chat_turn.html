@@ -1,0 +1,22 @@
+{# Rendered HTML fragment for ONE turn (user + assistant) appended to
+   the chat history. Carries the updated history JSON as a data
+   attribute so the form's hidden field can pick it up after the swap. #}
+
+<div class="chat-bubble user">
+  <div class="chat-bubble-header">you</div>
+  <div class="chat-bubble-body">{{ user_message }}</div>
+</div>
+
+{% if result.ok %}
+<div class="chat-bubble assistant"
+     data-history="{{ updated_history | tojson | e }}">
+  <div class="chat-bubble-header">{{ result.model }}</div>
+  <div class="chat-bubble-body">{{ result.reply }}</div>
+</div>
+{% else %}
+<div class="chat-bubble error"
+     data-history="{{ updated_history | tojson | e }}">
+  <div class="chat-bubble-header">error</div>
+  <div class="chat-bubble-body">{{ result.error }}</div>
+</div>
+{% endif %}

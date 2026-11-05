@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}⚾ Games · {{ target }}{% endblock %}
+{% block content %}
+
+<section class="date-nav">
+  <a href="/games?date={{ prev_date }}" class="date-btn">◀ {{ prev_date }}</a>
+  <h1 class="date-current">
+    Games · {{ target.strftime("%A · %B %-d, %Y") }}
+  </h1>
+  <a href="/games?date={{ next_date }}" class="date-btn">{{ next_date }} ▶</a>
+</section>
+
+<form action="/games" method="get" class="games-date-picker">
+  <label>
+    Jump to date:
+    <input type="date" name="date" value="{{ target_iso }}"
+           min="{{ date_min }}" max="{{ date_max }}">
+  </label>
+  <button type="submit" class="date-btn">go</button>
+  <span class="muted">{{ n_dates }} date(s) loaded · {{ date_min }} → {{ date_max }}</span>
+</form>
+
+{% if not games %}
+  <div class="no-games">
+    No games loaded for {{ target }}.
+    The forward window is today + 7 days; historical games go back to {{ date_min }}.
+    Use the date picker above or the prev/next buttons.
+  </div>
+{% else %}
+  <h2 class="section-title">{{ games|length }} game{{ '' if games|length == 1 else 's' }}</h2>
+  <div class="game-grid">
+    {% for g in games %}
+      <a href="/game/{{ g.game_pk }}" class="game-card">
+        <div class="game-header">
+          <span class="game-status status-{{ g.status|lower|replace(' ','-') }}">{{ g.status }}</span>
+          <span class="game-time">{{ g.game_date | dt }}</span>
+        </div>
+
+        <div class="teams">
+          <div class="team-row {% if g.home_win_prob is not none and g.home_win_prob < 0.5 %}team-fav{% endif %}">
+            <img src="{{ logo_url(g.away_team_id) }}" alt="{{ g.away_abbr }} logo" class="team-logo">
+            <div class="team-info">
+              <span class="team-abbr">{{ g.away_abbr }}</span>
+              <span class="team-name">{{ g.away_name }}</span>
+            </div>
+            <span class="team-score">{% if g.away_score is not none %}{{ g.away_score }}{% endif %}</span>
+          </div>
+
+          <div class="team-row {% if g.home_win_prob is not none and g.home_win_prob >= 0.5 %}team-fav{% endif %}">
+            <img src="{{ logo_url(g.home_team_id) }}" alt="{{ g.home_abbr }} logo" class="team-logo">
+            <div class="team-info">
+              <span class="team-abbr">{{ g.home_abbr }}</span>
+              <span class="team-name">{{ g.home_name }}</span>
+            </div>
+            <span class="team-score">{% if g.home_score is not none %}{{ g.home_score }}{% endif %}</span>
+          </div>
+        </div>
+
+        <div class="matchup-line">
+          <div class="pitcher">
+            <span class="pitcher-label">SP</span>
+            <span class="pitcher-name">{{ g.away_pitcher_name or "—" }}</span>
+            {% if g.away_pitcher_era is not none %}<span class="pitcher-era">{{ "%.2f"|format(g.away_pitcher_era) }} ERA</span>{% endif %}
+          </div>
+          <div class="pitcher">
+            <span class="pitcher-label">SP</span>
+            <span class="pitcher-name">{{ g.home_pitcher_name or "—" }}</span>
+            {% if g.home_pitcher_era is not none %}<span class="pitcher-era">{{ "%.2f"|format(g.home_pitcher_era) }} ERA</span>{% endif %}
+          </div>
+        </div>
+
+        {% if g.plays_recorded > 0 %}
+          <div class="winprob-bar" style="background: var(--field-dark); justify-content: center; color: var(--chalk); font-size: 12px;">
+            📊 {{ g.plays_recorded }} plays recorded
+          </div>
+        {% elif g.home_win_prob is not none %}
+          {% set home_pct = (g.home_win_prob * 100) | round(0, 'common') %}
+          {% set away_pct = 100 - home_pct %}
+          <div class="winprob-bar">
+            <div class="winprob-away" style="flex: {{ away_pct }};">{{ g.away_abbr }} {{ away_pct|int }}%</div>
+            <div class="winprob-home" style="flex: {{ home_pct }};">{{ home_pct|int }}% {{ g.home_abbr }}</div>
+          </div>
+        {% else %}
+          <div class="winprob-bar winprob-missing">no model prediction</div>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% endblock %}

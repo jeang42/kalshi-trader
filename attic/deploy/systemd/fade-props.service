@@ -1,0 +1,23 @@
+[Unit]
+Description=Fade-props — fast-cycling sports-prop longshot fade (paper OOS)
+After=network-online.target
+
+# Added 2026-08-11 (P1/R-10): nothing previously reported a failure.
+OnFailure=polymarket-alert@%n.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/Coding/kalshi-trader
+# Boot stagger (2026-08-17): the seven daemons all start at boot at once and
+# their first discovery cycles 429'd each other on 2026-08-16. Each unit
+# waits a different number of seconds so the fleet comes up spaced ~8 s
+# apart without anyone at the keyboard. Also gives the network time to
+# settle after boot. Applies to every start, so a manual restart of this
+# unit is delayed by 32 s too — harmless.
+ExecStartPre=/bin/sleep 32
+ExecStart=/home/USER/Coding/kalshi-trader/.venv/bin/python fade_props.py --loop --interval 21600
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target
