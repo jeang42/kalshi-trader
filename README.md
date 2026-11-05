@@ -228,6 +228,10 @@ transact, not just the analytical ones. Tests cannot reach the network
 
 - Python 3.11+
 - Core dependencies: `streamlit`, `pandas`, `numpy`, `plotly`, `requests`
+- **Optional: [Ollama](https://ollama.com)** for the LLM features (🧠 Deep
+  Analysis, the `llm` edge source, the sidecar Chat pages). Defaults to a
+  local instance at `http://localhost:11434` (`OLLAMA_API_BASE` in `.env`);
+  everything else works without it.
 
 ## Contact
 
