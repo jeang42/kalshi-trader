@@ -314,6 +314,7 @@ def pre_flight_check(
     max_stake_dollars: float = DEFAULT_MAX_STAKE_DOLLARS,
     max_orders_per_day: int = DEFAULT_MAX_ORDERS_PER_DAY,
     max_price_distance_cents: int = DEFAULT_MAX_PRICE_DISTANCE_CENTS,
+    max_bankroll_pct: float = 0.05,
 ) -> list[tuple[str, str]]:
     """Run every guardrail check against a proposed order.
 
@@ -350,13 +351,18 @@ def pre_flight_check(
             f"Stake ${stake_dollars:.2f} exceeds the per-order cap "
             f"${max_stake_dollars:.2f}. Reduce count or limit price."))
 
-    # Per-market bankroll cap — re-uses risk.py's notion of position size.
+    # Per-market bankroll limit — risk.py's max_market_position_pct.
+    # ADVISORY by design: it warns, it does not block. The hard per-order
+    # protection is the stake cap above; this expresses sizing discipline
+    # relative to bankroll, which the operator may deliberately exceed.
     if bankroll > 0:
         pct_of_bankroll = stake_dollars / bankroll
-        if pct_of_bankroll > 0.05:
+        if pct_of_bankroll > max_bankroll_pct:
             issues.append(("warn",
-                f"Stake is {pct_of_bankroll*100:.1f}% of bankroll. The "
-                "configured per-market cap is 5%."))
+                f"Stake is {pct_of_bankroll*100:.1f}% of bankroll — above "
+                f"the advisory per-market limit of {max_bankroll_pct*100:.0f}% "
+                "(risk setting max_market_position_pct). Advisory only: "
+                "this warns but does not block the order."))
 
     if current_mid_cents is not None:
         distance = abs(limit_price_cents - current_mid_cents)

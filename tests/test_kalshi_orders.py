@@ -133,6 +133,24 @@ class TestPreFlight:
         warns = [m for s, m in issues if s == "warn"]
         assert any("% of bankroll" in m for m in warns)
 
+    def test_bankroll_limit_is_labeled_advisory_and_never_blocks(
+            self, trading_enabled):
+        # P1-A: the per-market bankroll limit warns, it does not block —
+        # and must say so rather than calling itself a "cap".
+        issues = ko.pre_flight_check(**_good_args(count=80, bankroll=200.0))
+        bankroll_msgs = [(s, m) for s, m in issues if "bankroll" in m]
+        assert bankroll_msgs, "expected a bankroll advisory"
+        for sev, msg in bankroll_msgs:
+            assert sev == "warn"
+            assert "advisory" in msg.lower()
+            assert "cap is" not in msg  # old misleading wording
+
+    def test_bankroll_limit_pct_is_configurable(self, trading_enabled):
+        # 20% of bankroll with a 25% limit → no warning at all.
+        issues = ko.pre_flight_check(**_good_args(count=80, bankroll=200.0,
+                                                  max_bankroll_pct=0.25))
+        assert not [m for s, m in issues if "bankroll" in m]
+
 
 # ---------------------------------------------------------------------------
 # place_limit_order

@@ -387,6 +387,7 @@ for outcome, mkt_price, your_p, s in results:
                 bankroll=settings.bankroll,
                 in_drawdown_pause=in_pause,
                 todays_order_count=ko._today_submit_count(),
+                max_bankroll_pct=settings.max_market_position_pct,
             )
 
             blocks = [m for sev, m in issues if sev == "block"]
