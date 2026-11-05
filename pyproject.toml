@@ -4,12 +4,15 @@ version = "0.2.0a1"
 description = "Research harness and Streamlit console for Kalshi and Polymarket prediction markets — markets, scanners, backtesting, calibration, paper arms, gated live execution."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Proprietary — see LICENSE"}
+license = {text = "Apache-2.0"}
 authors = [{name = "Jeff Angelcyk"}]
-keywords = ["polymarket", "prediction-markets", "kelly-criterion", "streamlit"]
+keywords = ["kalshi", "polymarket", "prediction-markets", "kelly-criterion", "streamlit"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "License :: Other/Proprietary License",
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    # Kept deliberately: this repo is an application, not a library — it has
+    # no build-system/packaging config, and an accidental `twine upload`
+    # should fail. Remove this line only with a real packaging setup.
     "Private :: Do Not Upload",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

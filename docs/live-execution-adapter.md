@@ -242,7 +242,7 @@ live fills to the paper twin for a canary period before raising `--max-stake`.
 
 Manual equivalent if you prefer: `.env` → `KALSHI_LIVE_ENABLED=true`,
 `KALSHI_OWNER_PROFILE=<profile>`, `LIVE_TRADING_PROFILES=<profile>`,
-`LIVE_MAX_STAKE_DOLLARS=2`; run `python live_preflight.py --profile <profile>`;
+`LIVE_MAX_STAKE_DOLLARS=2`; run `python -m pm.trading.live_preflight --profile <profile>`;
 restart the service.
 
 To stop instantly at any time: `python -m emergency_stop activate` — every

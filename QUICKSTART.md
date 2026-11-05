@@ -14,7 +14,7 @@
 
 ## What this is
 
-A local **decision support tool** for analyzing Kalshi and Polymarket prediction markets. You run it on your own machine; it reads the public Polymarket APIs (no auth, no trading). It does **not** place orders, and it does **not** tell you what to buy.
+A local **decision support tool** for analyzing Kalshi and Polymarket prediction markets. You run it on your own machine; out of the box it reads the public market APIs (no auth, no trading) and does **not** place orders or tell you what to buy. (The repo as a whole *can* place real Kalshi orders, but only behind the three explicit opt-in gates described in the [README](README.md#disclaimers--risk) — nothing in this quickstart enables them.)
 
 What it does help you do:
 

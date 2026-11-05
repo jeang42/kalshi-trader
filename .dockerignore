@@ -5,3 +5,8 @@ __pycache__
 **/__pycache__
 .pytest_cache
 .coverage
+.env
+.env.*
+.git
+*.pem
+*.key

@@ -282,4 +282,4 @@ calibration. No order placement; no auth.
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
 
-[0.1.0]: https://github.com/jeang42/polymarket/releases/tag/v0.1.0
+[0.1.0]: https://github.com/jeang42/kalshi-trader
