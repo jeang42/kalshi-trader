@@ -1,6 +1,6 @@
 # Kalshi Trader
 
-by [Jeff Angelcyk](https://nexurite.ai)
+by [Jeff Angelcyk](https://nexurite.ai) · [![CI](https://github.com/jeang42/kalshi-trader/actions/workflows/ci.yml/badge.svg)](https://github.com/jeang42/kalshi-trader/actions/workflows/ci.yml)
 
 A research harness and Streamlit console for [Kalshi](https://kalshi.com) and
 [Polymarket](https://polymarket.com) prediction markets. Browse markets, chart
