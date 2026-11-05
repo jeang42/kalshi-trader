@@ -220,6 +220,11 @@ transact, not just the analytical ones. Tests cannot reach the network
 - Python 3.11+
 - Core dependencies: `streamlit`, `pandas`, `numpy`, `plotly`, `requests`
 
+## Contact
+
+For project matters, open an [issue](https://github.com/jeang42/kalshi-trader/issues).
+For anything else: [nexurite.ai](https://nexurite.ai).
+
 ## Disclaimers
 
 - This project is **not affiliated with, endorsed by, or connected to Kalshi
