@@ -60,7 +60,7 @@ _PRIVATE_KEY_PATH_ENV = "KALSHI_PRIVATE_KEY_PATH"
 # is the primary human account; additionally, any profile in
 # LIVE_TRADING_PROFILES (the agentic-arm allow-list) is authorized — this is
 # what lets multiple live daemons each authenticate against the one account
-# while paper-trading profiles (sandbox, dex, un-listed agentic_*) stay
+# while paper-trading profiles (sandbox, user2, un-listed agentic_*) stay
 # locked out. The real Kalshi account belongs to one human, so authorization
 # is deliberately an explicit allow-list, never "any profile".
 _OWNER_PROFILE_ENV = "KALSHI_OWNER_PROFILE"
@@ -134,11 +134,18 @@ def is_owner_profile_active() -> bool:
     try:
         from pm.core import profiles
         return profiles.active_profile() in authorized_profiles()
-    except Exception:
-        # If profiles aren't available (CLI scripts, tests), allow auth
-        # — protection at the UI layer is what we care about. CLI users
-        # have explicit shell access already.
-        return True
+    except Exception as e:
+        # Fail CLOSED. This gate is part of is_configured(), which every
+        # authed call — including order placement — depends on. Until
+        # 2026-11-04 it returned True here ("CLI users have shell access
+        # already"), but the except also swallows runtime failures such as
+        # an unreadable active-profile file, which silently authorized
+        # whatever profile happened to be active. A CLI that legitimately
+        # has no profile system can set POLYMARKET_ACTIVE_PROFILE to an
+        # authorized profile instead.
+        log.warning("profile authorization check failed (%s) — treating the "
+                    "active profile as NOT authorized (fail-closed)", e)
+        return False
 
 
 @contextlib.contextmanager

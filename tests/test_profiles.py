@@ -56,10 +56,10 @@ class TestInitializeProfiles:
 
     def test_does_not_overwrite_active_profile_choice(self, profiles_root, tmp_path):
         profiles.initialize_profiles(project_root=tmp_path)
-        profiles.set_active_profile("dex")
-        # Re-initialize — active should stay 'dex', not revert to 'jeff'
+        profiles.set_active_profile("user2")
+        # Re-initialize — active should stay 'user2', not revert to 'jeff'
         profiles.initialize_profiles(project_root=tmp_path)
-        assert profiles.active_profile() == "dex"
+        assert profiles.active_profile() == "user2"
 
 
 class TestLegacyMigration:
@@ -126,8 +126,8 @@ class TestActiveProfile:
 
     def test_reads_from_file(self, profiles_root, tmp_path):
         profiles.initialize_profiles(project_root=tmp_path)
-        profiles.set_active_profile("dex")
-        assert profiles.active_profile() == "dex"
+        profiles.set_active_profile("user2")
+        assert profiles.active_profile() == "user2"
 
     def test_falls_back_when_active_points_to_missing(self, profiles_root, tmp_path):
         profiles.initialize_profiles(project_root=tmp_path)
@@ -177,14 +177,14 @@ class TestResetProfile:
 class TestFilePath:
     def test_returns_per_profile_path(self, profiles_root, tmp_path):
         profiles.initialize_profiles(project_root=tmp_path)
-        p = profiles.file_path("portfolio", "dex")
-        assert p == profiles_root / "dex" / "portfolio.json"
+        p = profiles.file_path("portfolio", "user2")
+        assert p == profiles_root / "user2" / "portfolio.json"
 
     def test_uses_active_profile_when_none(self, profiles_root, tmp_path):
         profiles.initialize_profiles(project_root=tmp_path)
-        profiles.set_active_profile("dex")
+        profiles.set_active_profile("user2")
         p = profiles.file_path("portfolio")
-        assert p.parent.name == "dex"
+        assert p.parent.name == "user2"
 
     def test_rejects_unknown_kind(self, profiles_root):
         with pytest.raises(ValueError):
@@ -199,16 +199,16 @@ class TestLazyPathLookupIntegration:
         # Make sure no env override is set
         monkeypatch.delenv("POLYMARKET_PORTFOLIO_FILE", raising=False)
         profiles.initialize_profiles(project_root=tmp_path)
-        profiles.set_active_profile("dex")
+        profiles.set_active_profile("user2")
 
         from pm.ledger import portfolio
-        # Path should come from dex profile, not the legacy default
+        # Path should come from user2 profile, not the legacy default
         path = portfolio._portfolio_path()
-        assert path.parent.name == "dex"
+        assert path.parent.name == "user2"
 
     def test_env_var_overrides_profile(self, profiles_root, tmp_path, monkeypatch):
         profiles.initialize_profiles(project_root=tmp_path)
-        profiles.set_active_profile("dex")
+        profiles.set_active_profile("user2")
         override = tmp_path / "elsewhere.json"
         monkeypatch.setenv("POLYMARKET_PORTFOLIO_FILE", str(override))
 

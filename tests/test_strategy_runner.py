@@ -295,7 +295,7 @@ class TestIsAgenticProfile:
         from pm.core import profiles
         assert not profiles.is_agentic_profile("jeff")
         assert not profiles.is_agentic_profile("sandbox")
-        assert not profiles.is_agentic_profile("dex")
+        assert not profiles.is_agentic_profile("user2")
         # Lookalike but not the prefix
         assert not profiles.is_agentic_profile("agent")
         assert not profiles.is_agentic_profile("agenticfavorites")

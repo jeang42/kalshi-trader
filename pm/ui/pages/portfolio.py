@@ -25,7 +25,7 @@ st.caption(
     "state** — that's the 🏦 Live Portfolio page. Entries here come "
     "from manual buy/sell records and the agentic cron runners "
     "(paper simulations). On paper profiles (`sandbox`, `agentic_*`, "
-    "`dex`) this is the only portfolio view since those profiles "
+    "`user2`) this is the only portfolio view since those profiles "
     "can't touch the Kalshi API."
 )
 paper_trading_banner()

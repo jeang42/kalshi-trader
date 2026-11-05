@@ -11,7 +11,7 @@ Three profiles ship by default:
 | Profile | Purpose |
 |---|---|
 | **jeff** | Primary user. Selected by default. Legacy data files at the project root are migrated here on first launch. |
-| **dex** | A second real user. Same shape as `jeff`, completely independent state. |
+| **user2** | A second real user. Same shape as `jeff`, completely independent state. |
 | **sandbox** | Playground / paper trading. Default $1,000 bankroll, clear "PAPER TRADING" banner across action pages, "SIMULATED" watermark on the Portfolio chart so screenshots can't be mistaken for real performance. Visit Settings → 🧹 Reset sandbox to wipe everything clean and start over. |
 
 Create a fourth (or fifth, etc.) profile via Settings → Create a new profile.
@@ -38,7 +38,7 @@ The **sandbox** profile is the app's paper-trading mode. The app never places re
 6. Watch unrealized P&L move with live prices. Drawdown, sector exposure, and Tier 1 risk caps all apply in sandbox just like a real profile.
 7. When the market resolves, **🔴 Sell** at the final price (Polymarket marks resolved sides at $1.00 or $0.00) or simply delete the row
 8. Once you've made some forecasts via the Kelly Sizer's **💾 Save forecast** button, the Calibration page starts scoring your probability estimates — compare your Brier against the market baseline to see if your "edges" are real
-9. Reset sandbox anytime; your `jeff` (and `dex`) profiles are completely untouched
+9. Reset sandbox anytime; your `jeff` (and `user2`) profiles are completely untouched
 
 ### When to use it
 
@@ -47,7 +47,7 @@ The **sandbox** profile is the app's paper-trading mode. The app never places re
 - **Onboarding** — let a new user (your son, for example) experiment safely on `sandbox` before they touch their own real profile
 - **A/B testing** — try a category or strategy in sandbox first; promote to a real profile only after the calibration data on the Calibration page shows you're not losing money
 
-Paper profiles (`sandbox`, `agentic_*`, `dex`) never place real orders — they record trades to local files only. Real orders are possible **only** on the owner profile and **only** when live trading is explicitly enabled (see *Enabling live trading* below and `docs/live-execution-adapter.md` for autonomous execution). Sandbox is paper trading by *replacing the real-trade step* with manual recording; the rest of the workflow (sizing, tracking, scoring) is identical to what you'd do on a real profile. See `QUICKSTART.md` for the broader "what this is vs. isn't" framing.
+Paper profiles (`sandbox`, `agentic_*`, `user2`) never place real orders — they record trades to local files only. Real orders are possible **only** on the owner profile and **only** when live trading is explicitly enabled (see *Enabling live trading* below and `docs/live-execution-adapter.md` for autonomous execution). Sandbox is paper trading by *replacing the real-trade step* with manual recording; the rest of the workflow (sizing, tracking, scoring) is identical to what you'd do on a real profile. See `QUICKSTART.md` for the broader "what this is vs. isn't" framing.
 
 ## Running the system
 
@@ -322,7 +322,7 @@ If your portfolio's current value is more than the configured threshold (default
 
 ## Sandbox Portfolio Page
 
-This is the **paper-trade log** for the active profile — *not* your real Kalshi state. The Live Portfolio page (further down in this guide) is where your actual Kalshi balance, positions, fills, and settlements live. The two are intentionally decoupled: paper profiles (`sandbox`, `agentic_*`, `dex`) can't reach the Kalshi auth API at all, so Sandbox Portfolio is the only portfolio view available to them.
+This is the **paper-trade log** for the active profile — *not* your real Kalshi state. The Live Portfolio page (further down in this guide) is where your actual Kalshi balance, positions, fills, and settlements live. The two are intentionally decoupled: paper profiles (`sandbox`, `agentic_*`, `user2`) can't reach the Kalshi auth API at all, so Sandbox Portfolio is the only portfolio view available to them.
 
 For the owner profile (`jeff`), this page is largely redundant with Live Portfolio. Manual buy/sell entries still work if you want to log hypothetical trades or annotate decisions with notes, but the real-money trade flow goes through the 🚀 button on Kelly Sizer and lands on Kalshi directly.
 
@@ -503,7 +503,7 @@ Three guardrails enforced on every order:
 
 The above is the **manual** path (Phase 4): the 🚀 button on Kelly Sizer, limit-only, single-order, GTC, no batches.
 
-**Autonomous execution (Phase 5) has shipped** — a strategy daemon can place real orders via the `pm/trading/execution.py` broker seam, behind the same auth gates plus a per-profile `LIVE_TRADING_PROFILES` allow-list (so it's off by default even with the key configured). To take a strategy live at minimum size: run `python live_preflight.py --profile <profile>` (read-only — places nothing, confirms the account reads work), then `./go_live.sh --profile <profile> --service <svc> --max-stake 2 --enable` (refuses to enable unless the preflight passes). Full runbook + design: `docs/live-execution-adapter.md`. **Scaling beyond minimum size** is still gated on per-strategy evidence (Brier < market baseline, enough resolved trades) — going live at $2/order validates the *plumbing*, not the *edge*. Stop anytime with `python -m emergency_stop activate`.
+**Autonomous execution (Phase 5) has shipped** — a strategy daemon can place real orders via the `pm/trading/execution.py` broker seam, behind the same auth gates plus a per-profile `LIVE_TRADING_PROFILES` allow-list (so it's off by default even with the key configured). To take a strategy live at minimum size: run `python -m pm.trading.live_preflight --profile <profile>` (read-only — places nothing, confirms the account reads work), then `./go_live.sh --profile <profile> --service <svc> --max-stake 2 --enable` (refuses to enable unless the preflight passes). Full runbook + design: `docs/live-execution-adapter.md`. **Scaling beyond minimum size** is still gated on per-strategy evidence (Brier < market baseline, enough resolved trades) — going live at $2/order validates the *plumbing*, not the *edge*. Stop anytime with `python -m emergency_stop activate`.
 
 ---
 

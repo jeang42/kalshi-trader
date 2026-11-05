@@ -527,7 +527,8 @@ All optional — defaults are public Polymarket endpoints and local file paths.
 | `KALSHI_API_KEY_ID` / `KALSHI_PRIVATE_KEY_PATH` / `KALSHI_OWNER_PROFILE` | unset / unset / `jeff` (live-trading credentials + owner-profile lock) |
 | `LIVE_TRADING_PROFILES` | empty (comma-sep profiles allowed to use `execution.LiveBroker`; empty = all paper) |
 | `LIVE_MAX_STAKE_DOLLARS` | `25` (LiveBroker per-order hard cap; set tiny for min-size canary) |
-| `WEB_UI_TOKEN` | unset (gate disabled, logs a loud warning). Shared secret for the four LAN-facing web UIs — see `pm/core/web_auth.py` |
+| `WEB_UI_TOKEN` | unset (gate disabled, apps bind loopback-only, logs a loud warning). Shared secret for the four LAN-facing web UIs; setting it binds them `0.0.0.0` and requires the token — see `pm/core/web_auth.py` |
+| `WEB_BIND_HOST` | unset. Explicit bind-address override for the four FastAPI UIs (overrides the token-derived default) |
 | `HDHR_IP` | unset → `192.168.0.50` (`hdhomerun.device_ip()`, resolved per call). The tuner is on DHCP and keeps moving (each move silently killing captures) — **pin the current IP in `.env`**, re-find via `curl http://<tuner-ip>/discover.json`. A DHCP reservation on the router is the real fix |
 | `NHC_BASE` / `NHC_HTTP_TIMEOUT` | `https://www.nhc.noaa.gov` / `20` — NHC active-storm feed (`pm/feeds/nhc_data.py`) |
 | `ADVISORY_CAPTURE_DB` | `data/shared/advisory_capture.sqlite` (candidate-A capture store; conftest-redirected) |

@@ -36,7 +36,7 @@ class TestIsSandboxActive:
         assert shared.is_sandbox_active() is True
 
     def test_dex_is_not_sandbox(self, profiles_root):
-        profiles.set_active_profile("dex")
+        profiles.set_active_profile("user2")
         assert shared.is_sandbox_active() is False
 
     def test_safe_when_profiles_uninitialised(self, monkeypatch):

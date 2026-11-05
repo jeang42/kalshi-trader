@@ -131,6 +131,10 @@ streamlit run app.py
 scripts/baseball_web.sh --background       # multi-user baseball UI on :8770
 scripts/wnba_web.sh                        # WNBA UI on :8771
 scripts/tennis_web.sh                      # tennis UI on :8772
+# All web UIs bind 127.0.0.1 by default. For LAN access: set WEB_UI_TOKEN
+# in .env for the FastAPI UIs (shared-secret gate), and BIND_HOST=0.0.0.0
+# for the Streamlit app — which has NO auth, so anyone who reaches it can
+# act as you. See pm/core/web_auth.py.
 python trade_poller.py --loop --interval 30   # Kalshi executed-trade tape → archive
 ```
 
@@ -232,6 +236,30 @@ transact, not just the analytical ones. Tests cannot reach the network
   Analysis, the `llm` edge source, the sidecar Chat pages). Defaults to a
   local instance at `http://localhost:11434` (`OLLAMA_API_BASE` in `.env`);
   everything else works without it.
+
+## Maintenance status
+
+**This is a final release of a concluded project.** The author ran this
+system against a real account for six months, reached the conclusion
+documented above (no durable edge at this venue, measured carefully), and
+does not operate it or intend to operate it again. It is published for the
+evaluation methodology, the research record, and the engineering patterns —
+not as a supported trading product.
+
+Expectations to set accordingly:
+
+- **No support commitment.** Issues and PRs may be read, but there is no
+  promised response time and no roadmap. Expect no releases after this one.
+- **The venue will drift.** Kalshi's API (endpoints, schemas, sharding,
+  fees) changes; nothing here is monitored against it anymore. Assume any
+  live-API code path needs re-verification before trust.
+- **The research conclusions are frozen in time** (mid-2026 market
+  conditions). They are evidence about a method, not a permanent fact about
+  the venue.
+- Forks are welcome under the Apache-2.0 terms. If you take any of the live
+  execution code toward real money, re-run the full go-live runbook
+  yourself, at canary stakes, and treat this repo's safety rails as a
+  starting point rather than a guarantee.
 
 ## Contact
 

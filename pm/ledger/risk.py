@@ -52,8 +52,11 @@ class Settings:
     more conservative."""
 
     max_market_position_pct: float = 0.05
-    """Per-market position size cap as a fraction of bankroll. 0.05 = no more
-    than 5% of bankroll in any single market."""
+    """Per-market position size limit as a fraction of bankroll (0.05 = 5%).
+    ADVISORY: the Kelly page and pre_flight_check WARN when a stake exceeds
+    it, but nothing blocks the order on it. The hard, enforced per-order
+    protection is the stake cap (LIVE_MAX_STAKE_DOLLARS /
+    kalshi_orders.mandatory_caps)."""
 
     max_category_exposure_pct: float = 0.30
     """Per-category cost-basis cap. Warn (don't block) when one category

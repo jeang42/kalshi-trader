@@ -5,8 +5,8 @@
 #   scripts/baseball_web.sh                # foreground
 #   scripts/baseball_web.sh --background   # detach + log to data/shared/baseball_web.log
 #
-# LAN-only by default (binds 0.0.0.0). Tunnel via SSH for off-LAN access.
-# No auth — see TODO.md → "Authentication + per-user access control".
+# Binds loopback-only unless WEB_UI_TOKEN (shared-secret gate) or
+# WEB_BIND_HOST is set in .env — see pm/core/web_auth.py.
 
 set -euo pipefail
 

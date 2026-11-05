@@ -387,6 +387,7 @@ for outcome, mkt_price, your_p, s in results:
                 bankroll=settings.bankroll,
                 in_drawdown_pause=in_pause,
                 todays_order_count=ko._today_submit_count(),
+                max_bankroll_pct=settings.max_market_position_pct,
             )
 
             blocks = [m for sev, m in issues if sev == "block"]
@@ -420,6 +421,15 @@ for outcome, mkt_price, your_p, s in results:
                     st.balloons()
                 except ko.OrderRejected as e:
                     st.error(f"Local guardrail rejected order: {e}")
+                except ko.OrderOutcomeUnknown as e:
+                    # No response from Kalshi — NOT a confirmed failure.
+                    st.warning(
+                        f"⚠️ **Order outcome UNKNOWN** — Kalshi did not "
+                        f"answer, but the order may still have been "
+                        f"accepted. Check the **Orders** page (and your "
+                        f"fills) for client order id "
+                        f"`{e.client_order_id}` before submitting again — "
+                        f"resubmitting now could double-fill.\n\n{e}")
                 except Exception as e:
                     # HTTPError objects carry the response body — that's
                     # where Kalshi puts the human-readable rejection

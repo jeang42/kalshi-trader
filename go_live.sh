@@ -38,7 +38,7 @@ echo "=================================================================="
 
 # 1. Read-only preflight, with the owner lock pointed at the target profile.
 echo "Running read-only preflight (places nothing)…"
-if ! KALSHI_OWNER_PROFILE="$PROFILE" "$PY" live_preflight.py --profile "$PROFILE"; then
+if ! KALSHI_OWNER_PROFILE="$PROFILE" "$PY" -m pm.trading.live_preflight --profile "$PROFILE"; then
   echo ""
   echo "PREFLIGHT FAILED — refusing to go live. Nothing changed." >&2
   exit 1

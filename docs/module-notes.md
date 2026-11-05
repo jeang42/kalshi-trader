@@ -62,7 +62,7 @@ Authenticated Kalshi HTTP layer. Loads `KALSHI_API_KEY_ID` + RSA PEM at `KALSHI_
 
 ### `pm/trading/live_preflight.py`
 
-**Read-only live-API preflight** — `python live_preflight.py [--profile P]` once credentials are installed (loads `.env`; needs `kalshi_auth.is_configured()`, NOT `KALSHI_LIVE_ENABLED`, so it places nothing). Calls only authed *read* endpoints (`get_balance`/`get_authed_positions`/`get_fills`/`get_resting_orders`) + the `execution.LiveBroker` read paths, verifying the owner-profile lock resolves and our field-name assumptions match live response shapes BEFORE any order. `--profile` sets `POLYMARKET_ACTIVE_PROFILE` to simulate the daemon's owner identity. Step 0 of the go-live runbook.
+**Read-only live-API preflight** — `python -m pm.trading.live_preflight [--profile P]` once credentials are installed (loads `.env`; needs `kalshi_auth.is_configured()`, NOT `KALSHI_LIVE_ENABLED`, so it places nothing). Calls only authed *read* endpoints (`get_balance`/`get_authed_positions`/`get_fills`/`get_resting_orders`) + the `execution.LiveBroker` read paths, verifying the owner-profile lock resolves and our field-name assumptions match live response shapes BEFORE any order. `--profile` sets `POLYMARKET_ACTIVE_PROFILE` to simulate the daemon's owner identity. Step 0 of the go-live runbook.
 
 ### `go_live.sh`
 

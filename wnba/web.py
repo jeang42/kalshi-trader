@@ -1,15 +1,14 @@
 """FastAPI web UI for the WNBA sidecar.
 
-LAN-only, no auth, multi-user safe (FastAPI handles concurrent requests
+Token-gated (WEB_UI_TOKEN, see pm/core/web_auth.py; loopback-only when no
+token is configured), multi-user safe (FastAPI handles concurrent requests
 fine; SQLite is WAL-mode). Mirrors ``baseball/web.py`` and reuses its
 stylesheet so the two sidecars look identical — per the
 "every major sidecar ships a UI" rule in docs/sports-model-playbook.md.
 
 Run::
 
-    uvicorn wnba.web:app --host 0.0.0.0 --port 8771
-
-Then open http://<host>:8771 from anywhere on the LAN.
+    uvicorn wnba.web:app --port 8771
 
 Pages: Today (slate + model win-prob + favorite-hold highlight),
 Standings (team ratings). No Chat/Analysis pages — those need the
@@ -350,7 +349,7 @@ def main() -> int:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
     state.migrate()
-    uvicorn.run("wnba.web:app", host="0.0.0.0", port=8771)
+    uvicorn.run("wnba.web:app", host=web_auth.default_bind_host(), port=8771)
     return 0
 
 

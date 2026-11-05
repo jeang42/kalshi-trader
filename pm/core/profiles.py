@@ -21,7 +21,7 @@ Filesystem layout::
         forecasts.json
         alerts.json
         settings.json
-      dex/
+      user2/
         ...
       sandbox/           wipeable via the Settings page
         ...
@@ -89,7 +89,7 @@ def __getattr__(name: str):
 ACTIVE_PROFILE_ENV = "POLYMARKET_ACTIVE_PROFILE"
 SHARED_DIR_NAME = "shared"
 
-DEFAULT_PROFILES: list[str] = ["jeff", "dex", "sandbox", "agentic"]
+DEFAULT_PROFILES: list[str] = ["jeff", "user2", "sandbox", "agentic"]
 """Profiles created at first launch. The user can add more later.
 
 The ``agentic`` profile is intended to be auto-driven by

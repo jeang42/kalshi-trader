@@ -11,7 +11,15 @@ Trust model:
 - Every attempt — accepted, rejected, errored — is appended to
   ``data/shared/orders.log`` (or whatever ``ORDERS_LOG_PATH`` env
   points at). Audit-first: the line is written *before* the HTTP
-  call so a crash mid-request still leaves a trail.
+  call so a crash mid-request still leaves a trail, and the
+  pre-submission write is mandatory — an unwritable audit log refuses
+  the order (fail-closed) rather than placing it unrecorded.
+- Mandatory caps are enforced at THIS boundary, not only in callers:
+  every buy clears the per-order stake cap, and every order placed
+  through :func:`place_limit_order` clears the daily order cap, whose
+  check-and-reserve is atomic across processes (see
+  :func:`_submission_lock`). ``pre_flight_check`` remains the richer,
+  advisory layer for callers with more context (drawdown, mid-price).
 - Only limit orders are exposed. No market orders (surprise
   slippage during thin liquidity is the most common way to lose
   money fast). No batch endpoint wrapper in Phase 4.
@@ -23,6 +31,7 @@ Phase 5 and reuses the same primitives.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -32,6 +41,11 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - project targets Linux
+    fcntl = None  # type: ignore[assignment]
 
 import pandas as pd
 
@@ -60,6 +74,40 @@ class OrderRejected(RuntimeError):
     reaches Kalshi. Distinct from ``requests.HTTPError`` which means
     Kalshi itself rejected it (insufficient balance, market closed,
     etc.)."""
+
+
+class OrderOutcomeUnknown(RuntimeError):
+    """The submission failed at the transport layer with NO response from
+    Kalshi — a timeout or dropped connection. The order may or may not
+    have been accepted; treating this as "not placed" risks an unmanaged
+    real position, and resubmitting risks a double fill.
+
+    Carries ``client_order_id`` — the one handle that survives a failed
+    request. Reconcile against the venue (resting orders + fills carry the
+    client_order_id) before assuming anything; ``LiveBroker`` does this
+    automatically, manual callers should check the Orders page.
+
+    Distinct from both :class:`OrderRejected` (never sent — confirmed) and
+    ``requests.HTTPError`` (sent and answered — confirmed rejection).
+    """
+
+    def __init__(self, message: str, *, client_order_id: str):
+        super().__init__(message)
+        self.client_order_id = client_order_id
+
+
+def _classify_submit_error(e: Exception) -> str:
+    """``"unknown"`` when the venue never answered (transport failure —
+    the order may still have landed), ``"rejected"`` when the venue
+    answered (``HTTPError`` — a response exists by definition) or the
+    request was never sent (local error, open circuit breaker)."""
+    import requests
+
+    if (isinstance(e, requests.RequestException)
+            and not isinstance(e, requests.HTTPError)
+            and getattr(e, "response", None) is None):
+        return "unknown"
+    return "rejected"
 
 
 # ---------------------------------------------------------------------------
@@ -91,11 +139,22 @@ def _orders_log_path() -> Path:
     return Path(os.getenv("ORDERS_LOG_PATH", str(DEFAULT_ORDERS_LOG)))
 
 
-def _audit(event: str, payload: dict) -> None:
-    """Append a JSON-line audit record. Best-effort: filesystem failures
-    are logged but don't propagate — refusing to place the order
-    because the log file is unwritable is worse UX than placing the
-    order with a stderr warning."""
+def _audit(event: str, payload: dict, *, required: bool = False) -> None:
+    """Append a JSON-line audit record.
+
+    ``required=True`` — used for every pre-submission record — makes the
+    write **fail closed**: if the audit line cannot be persisted, the order
+    is refused (``OrderRejected``) rather than placed unrecorded. The
+    audit-first invariant this module documents ("the line is written
+    *before* the HTTP call") is only an invariant if an unwritable log
+    stops the order. The cost is that a full disk also blocks exits placed
+    through this module; the operator can always exit manually on Kalshi's
+    own website, but an unaudited real-money order can never be un-placed.
+
+    ``required=False`` (post-hoc records: accepted / error, and
+    ``cancel_submit`` — refusing to *cancel* because the log is unwritable
+    would be risk-increasing) stays best-effort: logged but not raised.
+    """
     p = _orders_log_path()
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +172,12 @@ def _audit(event: str, payload: dict) -> None:
         with open(p, "a") as f:
             f.write(json.dumps(line, default=str) + "\n")
     except OSError as e:
+        if required:
+            raise OrderRejected(
+                f"audit log {p} is unwritable ({e}) — refusing to submit an "
+                "order that would leave no audit trail. Fix the filesystem "
+                "(or point ORDERS_LOG_PATH at a writable location) first."
+            ) from e
         log.warning("orders audit log write failed: %s", e)
 
 
@@ -155,6 +220,87 @@ def _today_submit_count() -> int:
     return n
 
 
+def mandatory_caps() -> tuple[float, int]:
+    """The caps enforced unconditionally at this, the venue boundary:
+    ``(max_stake_dollars, max_orders_per_day)``.
+
+    Read from ``LIVE_MAX_STAKE_DOLLARS`` / ``LIVE_MAX_ORDERS_PER_DAY`` — the
+    same knobs ``execution._live_cfg_from_env`` uses — falling back to this
+    module's defaults. These are the *outer* limits: a caller (LiveBroker,
+    the Kelly page) may configure itself stricter, never looser. Raising
+    them is an explicit env change, i.e. an operator action.
+    """
+    stake = DEFAULT_MAX_STAKE_DOLLARS
+    raw = os.getenv("LIVE_MAX_STAKE_DOLLARS", "").strip()
+    if raw:
+        try:
+            stake = float(raw)
+        except ValueError:
+            log.warning("ignoring bad LIVE_MAX_STAKE_DOLLARS=%r", raw)
+    per_day = DEFAULT_MAX_ORDERS_PER_DAY
+    raw_n = os.getenv("LIVE_MAX_ORDERS_PER_DAY", "").strip()
+    if raw_n:
+        try:
+            per_day = int(raw_n)
+        except ValueError:
+            log.warning("ignoring bad LIVE_MAX_ORDERS_PER_DAY=%r", raw_n)
+    return stake, per_day
+
+
+#: How long a submission waits for the reservation lock before refusing.
+SUBMIT_LOCK_TIMEOUT_S = 10.0
+
+
+@contextlib.contextmanager
+def _submission_lock():
+    """Exclusive cross-process lock for the daily-cap check + submit audit.
+
+    The daily order cap was a read-check-write race: two daemons could both
+    read ``_today_submit_count() == cap-1`` and both submit. Holding this
+    lock across *count check → submit-audit append* makes the appended
+    ``submit`` row an atomic reservation — the next process's count sees it.
+
+    **Fails closed**: if the lock cannot be taken within
+    :data:`SUBMIT_LOCK_TIMEOUT_S` the order is refused. This is the opposite
+    of ``atomic_io.locked`` (which proceeds unlocked on timeout so a fill
+    that already happened can still be recorded); here nothing has been
+    placed yet, so refusing is the safe side.
+
+    The HTTP call happens *outside* the lock — a slow venue response must
+    not serialize every other process's submissions behind it.
+    """
+    if fcntl is None:  # pragma: no cover - project targets Linux
+        yield
+        return
+    lp = Path(str(_orders_log_path()) + ".lock")
+    try:
+        lp.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(lp, os.O_RDWR | os.O_CREAT, 0o600)
+    except OSError as e:
+        raise OrderRejected(
+            f"cannot open the order-submission lock {lp} ({e}) — refusing "
+            "to submit without the daily-cap reservation.") from e
+    deadline = time.monotonic() + SUBMIT_LOCK_TIMEOUT_S
+    try:
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise OrderRejected(
+                        f"timed out after {SUBMIT_LOCK_TIMEOUT_S:.0f}s waiting "
+                        "for the order-submission lock — another process may "
+                        "be stuck mid-submission; refusing to bypass the "
+                        "daily-cap reservation.") from None
+                time.sleep(0.05)
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
 def pre_flight_check(
     *,
     ticker: str,
@@ -168,6 +314,7 @@ def pre_flight_check(
     max_stake_dollars: float = DEFAULT_MAX_STAKE_DOLLARS,
     max_orders_per_day: int = DEFAULT_MAX_ORDERS_PER_DAY,
     max_price_distance_cents: int = DEFAULT_MAX_PRICE_DISTANCE_CENTS,
+    max_bankroll_pct: float = 0.05,
 ) -> list[tuple[str, str]]:
     """Run every guardrail check against a proposed order.
 
@@ -204,13 +351,18 @@ def pre_flight_check(
             f"Stake ${stake_dollars:.2f} exceeds the per-order cap "
             f"${max_stake_dollars:.2f}. Reduce count or limit price."))
 
-    # Per-market bankroll cap — re-uses risk.py's notion of position size.
+    # Per-market bankroll limit — risk.py's max_market_position_pct.
+    # ADVISORY by design: it warns, it does not block. The hard per-order
+    # protection is the stake cap above; this expresses sizing discipline
+    # relative to bankroll, which the operator may deliberately exceed.
     if bankroll > 0:
         pct_of_bankroll = stake_dollars / bankroll
-        if pct_of_bankroll > 0.05:
+        if pct_of_bankroll > max_bankroll_pct:
             issues.append(("warn",
-                f"Stake is {pct_of_bankroll*100:.1f}% of bankroll. The "
-                "configured per-market cap is 5%."))
+                f"Stake is {pct_of_bankroll*100:.1f}% of bankroll — above "
+                f"the advisory per-market limit of {max_bankroll_pct*100:.0f}% "
+                "(risk setting max_market_position_pct). Advisory only: "
+                "this warns but does not block the order."))
 
     if current_mid_cents is not None:
         distance = abs(limit_price_cents - current_mid_cents)
@@ -401,10 +553,40 @@ def place_limit_order(
         count=count, price_cents=limit_price_cents,
     )
 
-    # Audit *before* the call so a crash mid-request leaves a trail.
-    _audit("submit", {"body": body, "intent": {
-        "side": side_l, "action": action_l,
-        "limit_price_cents": int(limit_price_cents)}})
+    # ── Mandatory venue-boundary caps ──────────────────────────────────
+    # Enforced HERE, not only in pre_flight_check, so no caller — present
+    # or future — can place an order these caps would block by simply not
+    # running the advisory pre-flight. pre_flight_check remains the richer
+    # check (drawdown, distance-from-mid, bankroll %) for callers that have
+    # that context; this is the floor every order must clear.
+    max_stake, max_per_day = mandatory_caps()
+    if action_l == "buy":
+        stake_dollars = (count * limit_price_cents) / 100.0
+        if stake_dollars > max_stake:
+            raise OrderRejected(
+                f"stake ${stake_dollars:.2f} exceeds the per-order cap "
+                f"${max_stake:.2f} (LIVE_MAX_STAKE_DOLLARS). Reduce count "
+                "or raise the cap explicitly.")
+        # Sells are exempt from the stake cap by design: an exit of an
+        # existing position reduces risk and must not be blocked by its size.
+
+    # Daily-cap reservation. The count check and the audit append happen
+    # under one cross-process lock so concurrent processes cannot both
+    # observe cap-1 and both submit; the appended `submit` row *is* the
+    # reservation (it is counted whether or not the HTTP call later
+    # succeeds — conservative, and unchanged from previous semantics).
+    # The audit write is required (fail-closed): see _audit.
+    with _submission_lock():
+        today_n = _today_submit_count()
+        if today_n >= max_per_day:
+            raise OrderRejected(
+                f"daily order cap reached ({today_n}/{max_per_day}). "
+                "Anti-runaway guard — wait until UTC midnight or raise "
+                "LIVE_MAX_ORDERS_PER_DAY explicitly.")
+        # Audit *before* the call so a crash mid-request leaves a trail.
+        _audit("submit", {"body": body, "intent": {
+            "side": side_l, "action": action_l,
+            "limit_price_cents": int(limit_price_cents)}}, required=True)
     try:
         resp = ka.authed_post(_ORDERS_ENDPOINT, body)
     except Exception as e:
@@ -435,8 +617,18 @@ def place_limit_order(
                 "`exchange_index` against portfolio/balance's "
                 "balance_breakdown, and move funds with an intra-exchange "
                 "transfer before trading it.", ticker)
+        outcome = _classify_submit_error(e)
         _audit("error", {"client_order_id": coid, "error": str(e),
-                          "response_body": resp_body})
+                          "response_body": resp_body, "outcome": outcome})
+        if outcome == "unknown":
+            # The venue never answered. The order may be resting or filled.
+            # Do NOT resubmit on this id's behalf without reconciling first.
+            raise OrderOutcomeUnknown(
+                f"submission of {ticker} {side_l} {action_l} {count}x@"
+                f"{limit_price_cents}¢ got no response from Kalshi ({e}). "
+                f"The order MAY have been accepted — reconcile "
+                f"client_order_id={coid} against resting orders and fills "
+                "before retrying.", client_order_id=coid) from e
         raise
     _audit("accepted", {"client_order_id": coid, "response": resp})
     log.info("Order placed: %s %s %sx%s@%s (coid=%s)",
@@ -518,7 +710,7 @@ def cash_out_position(
 
     _audit("cashout_submit", {"body": body, "intent": {
         "side": side_l, "action": "sell",
-        "limit_price_cents": int(current_bid_cents)}})
+        "limit_price_cents": int(current_bid_cents)}}, required=True)
     try:
         resp = ka.authed_post(_ORDERS_ENDPOINT, body)
     except Exception as e:
@@ -532,8 +724,15 @@ def cash_out_position(
                 # str(e) does not. Losing it silently makes an order failure
                 # much harder to diagnose after the fact.
                 log.warning("could not read the error response body: %s", read_err)
+        outcome = _classify_submit_error(e)
         _audit("cashout_error", {"client_order_id": coid, "error": str(e),
-                                   "response_body": resp_body})
+                                   "response_body": resp_body, "outcome": outcome})
+        if outcome == "unknown":
+            raise OrderOutcomeUnknown(
+                f"cash-out of {ticker} {side_l} {count}x@{current_bid_cents}¢ "
+                f"got no response from Kalshi ({e}). The sell MAY have been "
+                f"accepted — reconcile client_order_id={coid} before retrying.",
+                client_order_id=coid) from e
         raise
     _audit("cashout_accepted", {"client_order_id": coid, "response": resp})
     log.info("Cash-out placed: %s %s sell %sx@%s (coid=%s)",
@@ -625,7 +824,8 @@ def place_take_profit(
 
     _audit("tp_submit", {"body": body, "current_bid_cents": current_bid_cents,
                          "intent": {"side": side_l, "action": "sell",
-                                    "limit_price_cents": int(sell_price_cents)}})
+                                    "limit_price_cents": int(sell_price_cents)}},
+           required=True)
     try:
         resp = ka.authed_post(_ORDERS_ENDPOINT, body)
     except Exception as e:
@@ -639,8 +839,15 @@ def place_take_profit(
                 # str(e) does not. Losing it silently makes an order failure
                 # much harder to diagnose after the fact.
                 log.warning("could not read the error response body: %s", read_err)
+        outcome = _classify_submit_error(e)
         _audit("tp_error", {"client_order_id": coid, "error": str(e),
-                              "response_body": resp_body})
+                              "response_body": resp_body, "outcome": outcome})
+        if outcome == "unknown":
+            raise OrderOutcomeUnknown(
+                f"take-profit on {ticker} {side_l} {count}x@{sell_price_cents}¢ "
+                f"got no response from Kalshi ({e}). The sell MAY have been "
+                f"accepted — reconcile client_order_id={coid} before retrying.",
+                client_order_id=coid) from e
         raise
     _audit("tp_accepted", {"client_order_id": coid, "response": resp})
     log.info("Take-profit placed: %s %s sell %sx@%s (coid=%s)",
@@ -661,7 +868,11 @@ def cancel_order(order_id: str) -> dict:
     try:
         resp = ka.authed_delete(f"{_ORDERS_ENDPOINT}/{order_id}")
     except Exception as e:
-        _audit("cancel_error", {"order_id": order_id, "error": str(e)})
+        # A failed cancellation does NOT mean the order is gone: a timeout
+        # may have cancelled it anyway, and an error may have left it
+        # resting. Callers must re-check resting orders, never assume.
+        _audit("cancel_error", {"order_id": order_id, "error": str(e),
+                                 "outcome": _classify_submit_error(e)})
         raise
     _audit("cancel_accepted", {"order_id": order_id, "response": resp})
     return resp
@@ -726,8 +937,10 @@ def get_resting_orders(*, ticker: str | None = None,
 
 __all__ = [
     "OrderRejected",
+    "OrderOutcomeUnknown",
     "is_live_enabled",
     "is_trading_enabled",
+    "mandatory_caps",
     "pre_flight_check",
     "place_limit_order",
     "place_take_profit",

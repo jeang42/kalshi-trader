@@ -25,10 +25,14 @@ If these apps ever face an untrusted network, replace this, do not extend it.
 
 Behaviour
 ---------
-* ``WEB_UI_TOKEN`` unset  → every request is allowed, and a loud warning is
-  logged once at startup. Unset must not silently break a running fleet, and a
-  service that refuses to boot because a new variable is missing is its own
-  outage.
+* ``WEB_UI_TOKEN`` unset  → every request is allowed, a loud warning is
+  logged once at startup, **and (since 2026-11-04) the apps bind loopback
+  only** — :func:`default_bind_host` returns ``127.0.0.1`` when no token is
+  configured, so "no auth" no longer means "open to the whole LAN". Unset
+  must not silently break a running fleet, and a service that refuses to
+  boot because a new variable is missing is its own outage; narrowing the
+  bind keeps both properties while closing the network hole. To expose an
+  unauthenticated app anyway, set ``WEB_BIND_HOST=0.0.0.0`` explicitly.
 * ``WEB_UI_TOKEN`` set    → a request must present it, by any of:
 
   1. ``?token=…`` in the query string — how you get in from a phone the first
@@ -70,6 +74,28 @@ COOKIE_MAX_AGE = 60 * 60 * 24 * 90
 def configured_token() -> str:
     """The expected token, or "" when the gate is disabled."""
     return os.getenv("WEB_UI_TOKEN", "").strip()
+
+
+def default_bind_host() -> str:
+    """The address a LAN-facing app should bind, given the auth config.
+
+    * ``WEB_BIND_HOST`` set → that address, verbatim. The operator said so.
+    * token configured      → ``0.0.0.0`` — the gate is on, LAN access is
+      the point of these apps.
+    * neither               → ``127.0.0.1``. An unauthenticated service must
+      not listen on the network by default; a deployment that wants the old
+      open-LAN behaviour has to say ``WEB_BIND_HOST=0.0.0.0`` explicitly.
+
+    (Before 2026-11-04 every app bound ``0.0.0.0`` unconditionally, so "no
+    token configured" meant "open to the whole LAN" — fail-open. This is
+    the release-audit P0-B fix; see docs/release-audit/04-security.md.
+    Unit-tested in tests/test_web_auth.py rather than doctested: the cases
+    are env mutations, which doctests would leak into the session.)
+    """
+    host = os.getenv("WEB_BIND_HOST", "").strip()
+    if host:
+        return host
+    return "0.0.0.0" if configured_token() else "127.0.0.1"
 
 
 def _bearer(header: str | None) -> str:
