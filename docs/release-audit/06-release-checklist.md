@@ -41,8 +41,13 @@
 ## Optional improvements (fine to leave for forks)
 
 - [ ] Vendor `htmx.min.js` instead of loading from unpkg (S-6).
-- [ ] Dependency audit against current advisories (`pip-audit`) at the
-  moment of release; pins are `>=` so installs resolve fresh.
+- [x] Dependency audit against current advisories (`pip-audit`) at the
+  moment of release; pins are `>=` so installs resolve fresh — done
+  2026-11-05: pyproject runtime + dev deps resolved fresh into a clean
+  venv (94 packages incl. transitives; e.g. streamlit 1.66.1, cryptography
+  50.0.2, fastapi 0.162.0, requests 2.34.2), `pip-audit 2.10.1`: **no
+  known vulnerabilities**. Point-in-time only — advisories move; rerun at
+  any later install.
 - [ ] CONTRIBUTING.md / CODE_OF_CONDUCT.md if contributions are actually
   wanted (the maintenance-status section currently implies not).
 - [ ] A persistent uncertain-order store if anyone ever scales the live
