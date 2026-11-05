@@ -325,7 +325,7 @@ def main() -> int:
     logging.basicConfig(level="INFO",
                         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     state.migrate()
-    uvicorn.run("tennis.web:app", host="0.0.0.0", port=8772)
+    uvicorn.run("tennis.web:app", host=web_auth.default_bind_host(), port=8772)
     return 0
 
 

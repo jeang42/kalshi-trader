@@ -63,16 +63,27 @@ ok "Dependencies ready"
 
 # ── 4. Launch Streamlit ──────────────────────────────────────────────────
 PORT="${PORT:-8501}"
+# The Streamlit console has NO authentication and (when the live gates are
+# enabled in .env) can place real orders — so it binds loopback by default.
+# To serve it on a network interface, set BIND_HOST=0.0.0.0 (or an address)
+# explicitly, and understand that anyone who can reach it can act as you.
+BIND_HOST="${BIND_HOST:-127.0.0.1}"
 
-# If user passed --server.port, respect it; otherwise inject our PORT default
+# If user passed --server.port / --server.address, respect them; otherwise
+# inject our defaults.
 INJECT_PORT=true
+INJECT_ADDR=true
 for arg in "$@"; do
-    if [[ "$arg" == --server.port* ]]; then INJECT_PORT=false; break; fi
+    if [[ "$arg" == --server.port* ]]; then INJECT_PORT=false; fi
+    if [[ "$arg" == --server.address* ]]; then INJECT_ADDR=false; fi
 done
 
 EXTRA_ARGS=("$@")
 if $INJECT_PORT; then
     EXTRA_ARGS+=(--server.port "$PORT")
+fi
+if $INJECT_ADDR; then
+    EXTRA_ARGS+=(--server.address "$BIND_HOST")
 fi
 
 info "Launching Streamlit on http://localhost:${PORT} (provider: ${MARKET_PROVIDER:-kalshi})"

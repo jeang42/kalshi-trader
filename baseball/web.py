@@ -1,16 +1,16 @@
 """FastAPI web UI for the baseball sidecar.
 
-LAN-only, no auth, multi-user safe (FastAPI handles concurrent requests
-out of the box — unlike Streamlit). HTMX for the few interactive bits
-(refresh button, date picker) so we don't need a JS toolchain.
+Multi-user safe (FastAPI handles concurrent requests out of the box —
+unlike Streamlit). HTMX for the few interactive bits (refresh button,
+date picker) so we don't need a JS toolchain. Gated by the WEB_UI_TOKEN
+shared secret (pm/core/web_auth.py); with no token configured it binds
+loopback only — set WEB_UI_TOKEN (or WEB_BIND_HOST) for LAN access.
 
 Run::
 
-    python -m baseball.web
+    python -m baseball.web          # binds per web_auth.default_bind_host()
     # or
-    uvicorn baseball.web:app --host 0.0.0.0 --port 8770
-
-Then open http://<host>:8770 from anywhere on the LAN.
+    uvicorn baseball.web:app --port 8770
 
 Theme: classic baseball — diamond green, dirt brown, accent on the
 red of stitched ball seams. Team logos from MLB's public CDN
@@ -503,7 +503,7 @@ def main() -> int:
     state.migrate()
     uvicorn.run(
         "baseball.web:app",
-        host="0.0.0.0", port=8770,
+        host=web_auth.default_bind_host(), port=8770,
         log_level="info",
         reload=False,
     )

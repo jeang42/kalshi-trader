@@ -45,4 +45,4 @@ smoke:
 
 # Start the Streamlit app
 run:
-	streamlit run app.py
+	streamlit run app.py --server.address "$${BIND_HOST:-127.0.0.1}"

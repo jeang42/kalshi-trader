@@ -151,6 +151,57 @@ class TestDisabledByDefault:
         assert web_auth.configured_token() == ""
 
 
+class TestDefaultBindHost:
+    """Release audit P0-B: an unauthenticated app must not listen on the
+    network by default. Loopback unless a token is configured or the
+    operator overrides explicitly."""
+
+    def test_no_token_binds_loopback(self, monkeypatch):
+        monkeypatch.delenv("WEB_UI_TOKEN", raising=False)
+        monkeypatch.delenv("WEB_BIND_HOST", raising=False)
+        assert web_auth.default_bind_host() == "127.0.0.1"
+
+    def test_token_configured_binds_lan(self, monkeypatch):
+        monkeypatch.setenv("WEB_UI_TOKEN", TOKEN)
+        monkeypatch.delenv("WEB_BIND_HOST", raising=False)
+        assert web_auth.default_bind_host() == "0.0.0.0"
+
+    def test_explicit_override_wins(self, monkeypatch):
+        monkeypatch.delenv("WEB_UI_TOKEN", raising=False)
+        monkeypatch.setenv("WEB_BIND_HOST", "192.0.2.7")
+        assert web_auth.default_bind_host() == "192.0.2.7"
+
+    def test_whitespace_token_still_means_loopback(self, monkeypatch):
+        monkeypatch.setenv("WEB_UI_TOKEN", "   ")
+        monkeypatch.delenv("WEB_BIND_HOST", raising=False)
+        assert web_auth.default_bind_host() == "127.0.0.1"
+
+
+class TestControlPlaneHealthLeak:
+    """Release audit P0-B follow-on: /health.json is in OPEN_PATHS (never
+    authenticated), so it must expose liveness ONLY. Until 2026-11-04 it
+    returned the full fleet snapshot — real Kalshi balance included — to
+    anyone who could reach the port, token or not."""
+
+    def test_health_json_is_open_but_carries_no_account_data(self, monkeypatch):
+        monkeypatch.setenv("WEB_UI_TOKEN", TOKEN)
+        from control_plane import web as cp_web
+        c = TestClient(cp_web.app)
+        r = c.get("/health.json")  # no token supplied — must still answer
+        assert r.status_code == 200
+        data = r.json()
+        assert data.get("ok") is True
+        forbidden = {"live_account", "balance", "balance_dollars", "payout",
+                     "services", "arms", "panels", "sidecars"}
+        assert not (set(data) & forbidden)
+
+    def test_dashboard_still_requires_the_token(self, monkeypatch):
+        monkeypatch.setenv("WEB_UI_TOKEN", TOKEN)
+        from control_plane import web as cp_web
+        c = TestClient(cp_web.app)
+        assert c.get("/").status_code == 401
+
+
 class TestRealApps:
     """The gate must actually be attached to the shipped apps — a middleware
     that exists but was never wired protects nothing."""

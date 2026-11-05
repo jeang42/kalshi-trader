@@ -2,14 +2,17 @@
 
 FastAPI + Jinja2 (the project's sidecar UI standard; Streamlit doesn't scale to
 concurrent users). Aggregates `collect.snapshot()` — service health, data-panel
-growth, paper-arm P&L, sidecar health, live account — and auto-refreshes. LAN,
-no auth, observe-only (no start/stop in this MVP).
+growth, paper-arm P&L, sidecar health, live account — and auto-refreshes.
+Observe-only (no start/stop in this MVP). Gated by the WEB_UI_TOKEN shared
+secret (see pm/core/web_auth.py); with no token configured it binds loopback
+only.
 
-Run: scripts/control_plane_web.sh  (uvicorn on :8773), or systemd control-plane.
+Run: `python -m control_plane.web` (uvicorn on :8773), or systemd control-plane.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -53,13 +56,18 @@ def dashboard(request: Request):
 
 @app.get("/health.json")
 def health_json():
-    """Machine-readable snapshot (for scripts / uptime checks)."""
-    return collect.snapshot()
+    """Liveness only. This endpoint is in web_auth.OPEN_PATHS (reachable
+    WITHOUT the token so an external monitor can probe it), so it must not
+    carry account data. Until 2026-11-04 it returned the full
+    collect.snapshot() — including the real Kalshi balance — to anyone who
+    could reach the port, token or not. The full snapshot stays on `/`,
+    behind the gate."""
+    return {"ok": True, "generated_at": datetime.now(UTC).isoformat()}
 
 
 if __name__ == "__main__":
     import os
 
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0",
+    uvicorn.run(app, host=web_auth.default_bind_host(),
                 port=int(os.getenv("CONTROL_PLANE_PORT", "8773")))
