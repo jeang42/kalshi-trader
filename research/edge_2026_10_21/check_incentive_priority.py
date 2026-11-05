@@ -38,7 +38,7 @@ def main() -> None:
         result.append({**row, "sides": sides, "one_sided_ceiling_dollars_period": ceiling,
                        "passes": ceiling >= 1 and any(s["plausibly_scorable"] for s in sides.values())})
     passing = [r for r in result if r["passes"]]
-    output = {"asof_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+    output = {"asof_utc": dt.datetime.now(dt.UTC).isoformat(),
               "screened_markets": len(result), "passing_markets": len(passing),
               "passing_events": len({r["event"] for r in passing}),
               "sum_ceiling_dollars_period": sum(r["one_sided_ceiling_dollars_period"] for r in passing),

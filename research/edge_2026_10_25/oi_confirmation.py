@@ -130,13 +130,13 @@ def p_from_boot(vals, events, n=4000):
 def analyse(rows, lead, w, label, primary):
     funded = [r for r in rows if r["category"] not in ("Sports", "Crypto")]
     cells = []
-    for (lo, hi), bname in zip(BANDS, BAND_NAMES):
+    for (lo, hi), bname in zip(BANDS, BAND_NAMES, strict=False):
         inband = [r for r in funded if lo <= r["mid"] < hi]
         if len(inband) < 30:
             continue
         g = np.array([r["oi_growth"] for r in inband])
         cut = np.percentile(g, 100 * 2 / 3)
-        top = [r for r, gv in zip(inband, g) if gv >= cut]
+        top = [r for r, gv in zip(inband, g, strict=False) if gv >= cut]
         for sign, sname in ((1, "up"), (-1, "down")):
             sel = [r for r in top
                    if abs(r["drift"]) >= 0.01 and np.sign(r["drift"]) == sign]
@@ -179,7 +179,7 @@ def analyse(rows, lead, w, label, primary):
     prim = [c for c in cells if c["half"] == "ALL" and primary]
     if prim:
         adj = holm(np.array([c["p_raw"] for c in prim]))
-        for c, a in zip(prim, adj):
+        for c, a in zip(prim, adj, strict=False):
             c["p_holm"] = float(a)
     return {"label": label, "lead": lead, "window": w,
             "n_rows_funded": len(funded), "n_rows_all": len(rows),

@@ -10,7 +10,7 @@ from pathlib import Path
 from scan_incentives import get
 
 OUT = Path(__file__).resolve().parent
-UTC = dt.timezone.utc
+UTC = dt.UTC
 
 
 def parse_date(value: str) -> dt.datetime:

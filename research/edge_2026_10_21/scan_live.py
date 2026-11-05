@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent
 API = "https://external-api.kalshi.com/trade-api/v2/markets"
 PANEL = ROOT / "data/shared/candle_panel.sqlite"
-UTC = dt.timezone.utc
+UTC = dt.UTC
 
 
 def request_page(cursor: str) -> dict:

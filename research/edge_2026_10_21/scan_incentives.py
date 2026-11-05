@@ -32,7 +32,7 @@ def get(path: str, params: dict | None = None) -> dict:
 
 
 def main() -> None:
-    started = dt.datetime.now(dt.timezone.utc)
+    started = dt.datetime.now(dt.UTC)
     cursor = ""
     programs = []
     pages = 0
