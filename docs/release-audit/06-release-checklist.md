@@ -22,8 +22,9 @@
 
 ## Strongly recommended (small, before or immediately after publishing)
 
-- [ ] Re-run `pytest`, `ruff`, `mypy` on the merge commit (CI does this).
-- [ ] Tag the release (e.g. `v0.2.0a1`) so "final release" is a fixed ref.
+- [x] Re-run `pytest`, `ruff`, `mypy` on the merge commit — done 2026-11-04
+  (2133 passed / 2 skipped, ruff clean, mypy clean); CI repeats it on push.
+- [x] Tag the release — `v0.2.0a1` created 2026-11-04.
 - [x] Add a `SECURITY.md` stating the no-maintenance policy (one paragraph,
   mirrors README "Maintenance status") so GitHub's security tab isn't blank
   — added 2026-11-04.
