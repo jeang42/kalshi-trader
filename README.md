@@ -1,5 +1,7 @@
 # Kalshi Trader
 
+by [Jeff Angelcyk](https://nexurite.ai)
+
 A research harness and Streamlit console for [Kalshi](https://kalshi.com) and
 [Polymarket](https://polymarket.com) prediction markets. Browse markets, chart
 price history, scan for structural opportunities, size positions with the Kelly
