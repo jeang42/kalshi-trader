@@ -8,3 +8,8 @@ market-metadata dumps, including Kalshi-authored rules text) were removed
 before the public release; what remains of Kalshi-originated data is
 included for research reproducibility only and is NOT covered by this
 project's Apache-2.0 license grant.
+
+This repository vendors htmx 1.9.12 (baseball/static/htmx.min.js,
+wnba/static/htmx.min.js, tennis/static/htmx.min.js), copyright
+Big Sky Software, distributed under the BSD 2-Clause License
+(https://github.com/bigskysoftware/htmx/blob/master/LICENSE).

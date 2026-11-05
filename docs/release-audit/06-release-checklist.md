@@ -40,7 +40,10 @@
 
 ## Optional improvements (fine to leave for forks)
 
-- [ ] Vendor `htmx.min.js` instead of loading from unpkg (S-6).
+- [x] Vendor `htmx.min.js` instead of loading from unpkg (S-6) — done
+  2026-11-05: htmx 1.9.12 committed into each sidecar's `static/` dir
+  (SHA-384 verified against htmx's published SRI hash), templates point at
+  `/static/htmx.min.js`, BSD-2-Clause attribution added to NOTICE.
 - [x] Dependency audit against current advisories (`pip-audit`) at the
   moment of release; pins are `>=` so installs resolve fresh — done
   2026-11-05: pyproject runtime + dev deps resolved fresh into a clean
