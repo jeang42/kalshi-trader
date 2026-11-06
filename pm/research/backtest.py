@@ -566,6 +566,139 @@ def _sample_size_warning(n_trades: int) -> str | None:
 # Engine
 # ---------------------------------------------------------------------------
 
+def _trade_fee(
+    stake: float,
+    eff_entry: float,
+    won: bool,
+    *,
+    fee_pct: float,
+    fee_fn: Callable[[float, float, float, str], float] | None,
+    condition_id: str,
+) -> float:
+    """Dollars of fee for one held-to-resolution trade.
+
+    ``fee_fn``, when given, overrides the flat ``fee_pct``. It is handed
+    ``(entry_price, exit_price, contracts, ticker)``.
+
+    ``exit_price`` is 1.0 for a win and 0.0 for a loss, and ``won`` is from
+    the STRATEGY's side: for a YES position ``won`` means YES resolved true,
+    for a NO position it means the underlying resolved no. Either way the
+    winning side settles at $1, which is what the trader actually receives
+    and therefore the right exit price to feed a fee calculator. (Kalshi's
+    fee is zero at both extremes, so for this held-to-resolution path only
+    the entry fee really moves the number.)
+
+    A ``fee_fn`` that raises is not fatal: a backtest is worth more with
+    approximate fees than not at all, so the failure is logged once per
+    trade and the flat ``fee_pct`` is used for that trade. Callers get no
+    signal beyond the log — deliberate, and the reason this is a function
+    you can test directly rather than a branch inside a 300-line loop.
+    """
+    if fee_fn is None:
+        return stake * fee_pct
+    exit_price = 1.0 if won else 0.0
+    contracts = stake / max(eff_entry, 1e-9)
+    try:
+        return float(fee_fn(eff_entry, exit_price, contracts, condition_id))
+    except Exception as e:
+        log.warning("fee_fn raised on %s (%s); falling back to fee_pct",
+                    condition_id, e)
+        return stake * fee_pct
+
+
+def _summarize_by_category(trades: pd.DataFrame) -> dict[str, dict[str, Any]]:
+    """Per-category breakdown of a finished trade log.
+
+    ``market_brier`` alongside the strategy's own ``brier`` is the point of
+    this table: a category where the strategy's Brier is good but the
+    market's is better is a category where the strategy has no edge, however
+    pleasant its PnL looks.
+
+    An empty category string becomes ``"Unknown"`` rather than being dropped.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for cat, sub in trades.groupby("category"):
+        n_c = len(sub)
+        w_c = int(sub["won"].sum())
+        stake_c = float(sub["stake"].sum())
+        pnl_c = float(sub["pnl"].sum())
+        out[str(cat) or "Unknown"] = {
+            "n_trades": n_c,
+            "hit_rate": w_c / n_c if n_c else None,
+            "total_pnl": pnl_c,
+            "roi": pnl_c / stake_c if stake_c > 0 else None,
+            "brier": float(sub["brier_term"].mean()),
+            "market_brier": float(
+                ((sub["market_yes_price"].astype(float)
+                  - sub["actual"].astype(float)) ** 2).mean()
+            ),
+        }
+    return out
+
+
+def _quality_warnings(
+    *,
+    n_trades: int,
+    roi: float | None,
+    brier: float,
+    mb_brier: float | None,
+    mb_n: int,
+    beats_baseline: bool | None,
+) -> list[str]:
+    """Warnings about whether the RESULT means anything: sample size, sign of
+    ROI, and the market-baseline gate.
+
+    The baseline gate is the one that matters and the one a reader skips, so
+    it says GATE FAILED and spells out the consequence. Losing to the price
+    itself on the same trades means any PnL on the sample is market movement
+    plus costs, not skill.
+    """
+    out: list[str] = []
+    w_sample = _sample_size_warning(n_trades)
+    if w_sample is not None:
+        out.append(w_sample)
+    if roi is not None and roi < 0:
+        out.append(
+            f"ROI is {roi*100:+.1f}% — this strategy is losing money on this sample."
+        )
+    if beats_baseline is False:
+        out.append(
+            f"GATE FAILED: strategy Brier {brier:.4f} does not beat the "
+            f"market-baseline Brier {mb_brier:.4f} on the same {mb_n} "
+            "trade(s) — the strategy has no forecasting edge over the "
+            "price itself; any PnL on this sample is market movement "
+            "plus costs, not skill."
+        )
+    return out
+
+
+def _cash_constraint_warnings(
+    *, portfolio_constrained: bool, n_skipped_for_cash: int, n_clipped: int,
+) -> list[str]:
+    """Warnings about the PORTFOLIO constraint having bitten.
+
+    Both mean the same thing in different degrees — the sample does not show
+    what the strategy would do with enough bankroll to take every signal at
+    Kelly size — and both are silent when ``portfolio_constrained`` is False,
+    where the counters are not meaningful.
+    """
+    if not portfolio_constrained:
+        return []
+    out: list[str] = []
+    if n_skipped_for_cash > 0:
+        out.append(
+            f"{n_skipped_for_cash} trade(s) skipped because cash was "
+            "exhausted by earlier open positions — bankroll too small "
+            "for the strategy's concurrent open positions on this sample."
+        )
+    if n_clipped > 0:
+        out.append(
+            f"{n_clipped} trade(s) clipped below Kelly-desired stake by "
+            "the portfolio constraint."
+        )
+    return out
+
+
 def run_backtest(
     strategy: Strategy,
     dataset: list[tuple[MarketSnapshot, Resolution]],
@@ -707,28 +840,8 @@ def run_backtest(
         # counted (it's already inside gross_pnl).
         ideal_pnl = _trade_pnl(stake, mid_entry, won)
         spread_cost = ideal_pnl - gross_pnl
-        # Fee accounting: prefer the per-trade fee_fn callable when
-        # provided; fall back to flat fee_pct otherwise.
-        if fee_fn is not None:
-            # Held-to-resolution: exit is $1 if won, $0 if lost. Note
-            # that won is from the strategy-side perspective: for a
-            # YES position, exit_price=1 means YES resolved true; for
-            # a NO position, exit_price=1 means NO resolved true
-            # (i.e., the underlying resolved no). Either way the
-            # winning side settles at $1 — that's what the trader
-            # actually receives, so it's the right exit_price to feed
-            # to the fee calc.
-            exit_price = 1.0 if won else 0.0
-            contracts = stake / max(eff_entry, 1e-9)
-            try:
-                fee = float(fee_fn(eff_entry, exit_price, contracts,
-                                    res.condition_id))
-            except Exception as e:
-                log.warning("fee_fn raised on %s (%s); falling back to fee_pct",
-                            res.condition_id, e)
-                fee = stake * fee_pct
-        else:
-            fee = stake * fee_pct
+        fee = _trade_fee(stake, eff_entry, won, fee_pct=fee_pct,
+                         fee_fn=fee_fn, condition_id=res.condition_id)
         net_pnl = gross_pnl - fee
 
         if portfolio_constrained:
@@ -815,51 +928,15 @@ def run_backtest(
     if mb_brier is not None:
         beats_baseline = bool(brier < mb_brier)
 
-    by_cat: dict[str, dict[str, Any]] = {}
-    for cat, sub in trades.groupby("category"):
-        n_c = len(sub)
-        w_c = int(sub["won"].sum())
-        stake_c = float(sub["stake"].sum())
-        pnl_c = float(sub["pnl"].sum())
-        by_cat[str(cat) or "Unknown"] = {
-            "n_trades": n_c,
-            "hit_rate": w_c / n_c if n_c else None,
-            "total_pnl": pnl_c,
-            "roi": pnl_c / stake_c if stake_c > 0 else None,
-            "brier": float(sub["brier_term"].mean()),
-            "market_brier": float(
-                ((sub["market_yes_price"].astype(float)
-                  - sub["actual"].astype(float)) ** 2).mean()
-            ),
-        }
+    by_cat = _summarize_by_category(trades)
 
-    warnings_list: list[str] = []
-    w_sample = _sample_size_warning(n_trades)
-    if w_sample is not None:
-        warnings_list.append(w_sample)
-    if roi is not None and roi < 0:
-        warnings_list.append(
-            f"ROI is {roi*100:+.1f}% — this strategy is losing money on this sample."
-        )
-    if beats_baseline is False:
-        warnings_list.append(
-            f"GATE FAILED: strategy Brier {brier:.4f} does not beat the "
-            f"market-baseline Brier {mb_brier:.4f} on the same {mb_n} "
-            "trade(s) — the strategy has no forecasting edge over the "
-            "price itself; any PnL on this sample is market movement "
-            "plus costs, not skill."
-        )
-    if portfolio_constrained and n_skipped_for_cash > 0:
-        warnings_list.append(
-            f"{n_skipped_for_cash} trade(s) skipped because cash was "
-            "exhausted by earlier open positions — bankroll too small "
-            "for the strategy's concurrent open positions on this sample."
-        )
-    if portfolio_constrained and n_clipped > 0:
-        warnings_list.append(
-            f"{n_clipped} trade(s) clipped below Kelly-desired stake by "
-            "the portfolio constraint."
-        )
+    warnings_list = _quality_warnings(
+        n_trades=n_trades, roi=roi, brier=brier, mb_brier=mb_brier,
+        mb_n=mb_n, beats_baseline=beats_baseline,
+    ) + _cash_constraint_warnings(
+        portfolio_constrained=portfolio_constrained,
+        n_skipped_for_cash=n_skipped_for_cash, n_clipped=n_clipped,
+    )
 
     total_fees = float(trades["fee"].sum())
     implied_spread_cost = float(trades["spread_cost"].sum())
@@ -1400,8 +1477,8 @@ def run_backtest_walk_forward(
             half_spread=half_spread, fee_pct=fee_pct,
             eval_step_hours=eval_step_hours,
         )
-        n_skipped_for_cash = port_stats["n_skipped"]
-        n_clipped_for_cash = port_stats["n_clipped"]
+        n_skipped_for_cash = int(port_stats["n_skipped"])
+        n_clipped_for_cash = int(port_stats["n_clipped"])
         min_cash_seen = port_stats["min_cash_seen"]
     else:
         trade_rows = []
@@ -1478,40 +1555,15 @@ def run_backtest_walk_forward(
     if mb_brier is not None:
         beats_baseline = bool(brier < mb_brier)
 
-    by_cat: dict[str, dict[str, Any]] = {}
-    for cat, sub in trades.groupby("category"):
-        n_c = len(sub)
-        w_c = int(sub["won"].sum())
-        stake_c = float(sub["stake"].sum())
-        pnl_c = float(sub["pnl"].sum())
-        by_cat[str(cat) or "Unknown"] = {
-            "n_trades": n_c,
-            "hit_rate": w_c / n_c if n_c else None,
-            "total_pnl": pnl_c,
-            "roi": pnl_c / stake_c if stake_c > 0 else None,
-            "brier": float(sub["brier_term"].mean()),
-            "market_brier": float(
-                ((sub["market_yes_price"].astype(float)
-                  - sub["actual"].astype(float)) ** 2).mean()
-            ),
-        }
+    by_cat = _summarize_by_category(trades)
 
-    warnings_list: list[str] = []
-    w_sample = _sample_size_warning(n_trades)
-    if w_sample is not None:
-        warnings_list.append(w_sample)
-    if roi is not None and roi < 0:
-        warnings_list.append(
-            f"ROI is {roi*100:+.1f}% — this strategy is losing money on this sample."
-        )
-    if beats_baseline is False:
-        warnings_list.append(
-            f"GATE FAILED: strategy Brier {brier:.4f} does not beat the "
-            f"market-baseline Brier {mb_brier:.4f} on the same {mb_n} "
-            "trade(s) — the strategy has no forecasting edge over the "
-            "price itself; any PnL on this sample is market movement "
-            "plus costs, not skill."
-        )
+    # Same two groups as run_backtest, with this engine's own warning between
+    # them — mark-to-market exits are a walk-forward-only concern, and the
+    # ordering (result quality, then this, then cash) is what the UI renders.
+    warnings_list = _quality_warnings(
+        n_trades=n_trades, roi=roi, brier=brier, mb_brier=mb_brier,
+        mb_n=mb_n, beats_baseline=beats_baseline,
+    )
     n_signal_flips = int((trades["exit_reason"] == "signal_flip").sum())
     if n_signal_flips:
         warnings_list.append(
@@ -1519,17 +1571,10 @@ def run_backtest_walk_forward(
             "mark-to-market PnL on those depends on intermediate prices "
             "the live engine may not be able to fill at."
         )
-    if portfolio_constrained and n_skipped_for_cash > 0:
-        warnings_list.append(
-            f"{n_skipped_for_cash} trade(s) skipped because cash was "
-            "exhausted by earlier open positions — bankroll too small "
-            "for the strategy's concurrent open positions on this sample."
-        )
-    if portfolio_constrained and n_clipped_for_cash > 0:
-        warnings_list.append(
-            f"{n_clipped_for_cash} trade(s) clipped below Kelly-desired "
-            "stake by the portfolio constraint."
-        )
+    warnings_list += _cash_constraint_warnings(
+        portfolio_constrained=portfolio_constrained,
+        n_skipped_for_cash=n_skipped_for_cash, n_clipped=n_clipped_for_cash,
+    )
 
     total_fees = float(trades["fee"].sum())
     implied_spread_cost = float(trades["spread_cost"].sum())

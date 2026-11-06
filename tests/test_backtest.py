@@ -1324,3 +1324,230 @@ class TestMarketBaselineGate:
         assert r.market_baseline_brier is None
         assert r.market_baseline_n == 0
         assert r.beats_market_baseline is None
+
+
+# ---------------------------------------------------------------------------
+# The extracted aggregation helpers.
+#
+# These four came out of `run_backtest` (329 lines) and
+# `run_backtest_walk_forward` (212). The by-category table and the two
+# warning groups were duplicated between them — the category block
+# byte-for-byte — so they were two places to fix one bug. The fee resolver
+# was a 22-line branch in the middle of the trade loop whose fallback arm
+# (a `fee_fn` that raises) had no coverage at all, reachable only by running
+# a whole backtest.
+#
+# Equivalence for the extraction itself was established by fingerprinting
+# every field of every BacktestResult across 29 configurations (both
+# engines, both portfolio modes, three cost settings, both fee paths, the
+# empty-result path) before and after: byte-identical. These tests pin the
+# pieces directly, which that fingerprint cannot do once it is deleted.
+# ---------------------------------------------------------------------------
+
+class TestTradeFee:
+
+    def test_flat_fee_pct_is_a_fraction_of_stake(self):
+        assert bt._trade_fee(100.0, 0.4, True, fee_pct=0.02, fee_fn=None,
+                             condition_id="C") == pytest.approx(2.0)
+
+    def test_fee_fn_overrides_fee_pct_and_sees_contracts_not_dollars(self):
+        seen = {}
+
+        def fee_fn(entry, exit_, contracts, ticker):
+            seen.update(entry=entry, exit=exit_, contracts=contracts,
+                        ticker=ticker)
+            return 1.23
+
+        fee = bt._trade_fee(50.0, 0.25, True, fee_pct=0.9, fee_fn=fee_fn,
+                            condition_id="TICK")
+        assert fee == pytest.approx(1.23), "fee_fn must override fee_pct"
+        assert seen == {"entry": 0.25, "exit": 1.0, "contracts": 200.0,
+                        "ticker": "TICK"}
+
+    def test_exit_price_is_zero_on_a_loss(self):
+        """`won` is strategy-side: the winning side settles at $1 either way,
+        so a loss is exit 0.0 regardless of direction."""
+        got = {}
+        bt._trade_fee(10.0, 0.5, False, fee_pct=0.0,
+                      fee_fn=lambda e, x, c, t: got.setdefault("exit", x) or 0.0,
+                      condition_id="C")
+        assert got["exit"] == 0.0
+
+    def test_zero_entry_price_does_not_divide_by_zero(self):
+        got = {}
+        bt._trade_fee(10.0, 0.0, True, fee_pct=0.0,
+                      fee_fn=lambda e, x, c, t: got.setdefault("c", c) or 0.0,
+                      condition_id="C")
+        assert got["c"] == pytest.approx(10.0 / 1e-9)
+
+    def test_raising_fee_fn_falls_back_to_fee_pct_and_warns(self, caplog):
+        """Previously unreachable in tests: this arm was the only uncovered
+        branch in the fee path. A backtest with approximate fees beats no
+        backtest, so a broken fee_fn must not abort the run."""
+        def boom(entry, exit_, contracts, ticker):
+            raise ValueError("no fee schedule for this ticker")
+
+        with caplog.at_level("WARNING"):
+            fee = bt._trade_fee(200.0, 0.5, True, fee_pct=0.03, fee_fn=boom,
+                                condition_id="KXBAD")
+        assert fee == pytest.approx(6.0), "must fall back to stake * fee_pct"
+        assert "fee_fn raised on KXBAD" in caplog.text
+        assert "no fee schedule" in caplog.text, \
+            "the underlying error must reach the log, not be swallowed"
+
+    def test_raising_fee_fn_does_not_abort_a_whole_backtest(self):
+        """The property the fallback exists for, end to end."""
+        as_of = datetime(2026, 3, 1, tzinfo=UTC)
+        prices = _price_history([0.3, 0.3, 0.3, 0.3], start=as_of - timedelta(hours=4))
+        pairs = [(bt.MarketSnapshot(f"C{i}", "q?", "Sports", as_of, prices),
+                  bt.Resolution(f"C{i}", True, as_of + timedelta(days=1)))
+                 for i in range(3)]
+
+        def boom(entry, exit_, contracts, ticker):
+            raise RuntimeError("boom")
+
+        r = bt.run_backtest(
+            lambda s: bt.Signal("YES", 0.8), pairs,
+            bankroll=1000.0, half_spread=0.0, fee_pct=0.01, fee_fn=boom)
+        assert r.n_trades == 3
+        assert r.total_fees == pytest.approx(float(r.trades["stake"].sum()) * 0.01)
+
+
+class TestSummarizeByCategory:
+
+    @staticmethod
+    def _trades(rows):
+        return pd.DataFrame(rows)
+
+    def test_groups_and_computes_each_field(self):
+        out = bt._summarize_by_category(self._trades([
+            # cat, won, stake, pnl, brier_term, market price, actual
+            {"category": "Sports", "won": True, "stake": 100.0, "pnl": 50.0,
+             "brier_term": 0.04, "market_yes_price": 0.6, "actual": 1.0},
+            {"category": "Sports", "won": False, "stake": 100.0, "pnl": -100.0,
+             "brier_term": 0.16, "market_yes_price": 0.8, "actual": 0.0},
+            {"category": "Politics", "won": True, "stake": 50.0, "pnl": 25.0,
+             "brier_term": 0.09, "market_yes_price": 0.7, "actual": 1.0},
+        ]))
+        assert set(out) == {"Sports", "Politics"}
+        s = out["Sports"]
+        assert s["n_trades"] == 2
+        assert s["hit_rate"] == pytest.approx(0.5)
+        assert s["total_pnl"] == pytest.approx(-50.0)
+        assert s["roi"] == pytest.approx(-50.0 / 200.0)
+        assert s["brier"] == pytest.approx(0.10)
+        # market Brier: ((0.6-1)^2 + (0.8-0)^2) / 2
+        assert s["market_brier"] == pytest.approx((0.16 + 0.64) / 2)
+        assert out["Politics"]["n_trades"] == 1
+
+    def test_blank_category_becomes_unknown_rather_than_being_dropped(self):
+        out = bt._summarize_by_category(self._trades([
+            {"category": "", "won": True, "stake": 10.0, "pnl": 5.0,
+             "brier_term": 0.01, "market_yes_price": 0.5, "actual": 1.0},
+        ]))
+        assert list(out) == ["Unknown"]
+        assert out["Unknown"]["n_trades"] == 1
+
+    def test_zero_stake_category_gives_none_roi_not_a_zero_division(self):
+        out = bt._summarize_by_category(self._trades([
+            {"category": "Sports", "won": False, "stake": 0.0, "pnl": 0.0,
+             "brier_term": 0.25, "market_yes_price": 0.5, "actual": 0.0},
+        ]))
+        assert out["Sports"]["roi"] is None
+
+    def test_both_engines_produce_the_same_table_shape(self):
+        """The block was duplicated byte-for-byte; keep the two in step."""
+        as_of = datetime(2026, 4, 1, tzinfo=UTC)
+        prices = _price_history([0.4] * 8, start=as_of - timedelta(hours=8))
+        pairs = [(bt.MarketSnapshot(f"C{i}", "q?", c, as_of, prices),
+                  bt.Resolution(f"C{i}", i % 2 == 0, as_of + timedelta(days=1)))
+                 for i, c in enumerate(["Sports", "Politics", "Sports"])]
+        kw = dict(bankroll=1000.0, kelly_multiplier=0.5, half_spread=0.0)
+        a = bt.run_backtest(lambda s: bt.Signal("YES", 0.75), pairs, **kw)
+        b = bt.run_backtest_walk_forward(
+            lambda s: bt.Signal("YES", 0.75), pairs, eval_step_hours=1.0, **kw)
+        assert set(a.by_category) == set(b.by_category)
+        for cat in a.by_category:
+            assert set(a.by_category[cat]) == set(b.by_category[cat])
+
+
+class TestWarningGroups:
+
+    def test_quality_warnings_flags_negative_roi(self):
+        ws = bt._quality_warnings(n_trades=500, roi=-0.12, brier=0.2,
+                                  mb_brier=None, mb_n=0, beats_baseline=None)
+        assert any("losing money" in w and "-12.0%" in w for w in ws)
+
+    def test_quality_warnings_silent_when_everything_is_fine(self):
+        assert bt._quality_warnings(
+            n_trades=500, roi=0.08, brier=0.15, mb_brier=0.2, mb_n=500,
+            beats_baseline=True) == []
+
+    def test_gate_failed_names_the_numbers_and_the_consequence(self):
+        ws = bt._quality_warnings(n_trades=400, roi=0.05, brier=0.2100,
+                                  mb_brier=0.1900, mb_n=400,
+                                  beats_baseline=False)
+        gate = [w for w in ws if "GATE FAILED" in w]
+        assert len(gate) == 1
+        assert "0.2100" in gate[0] and "0.1900" in gate[0] and "400" in gate[0]
+        assert "not skill" in gate[0]
+
+    def test_gate_warning_absent_when_baseline_is_unknown(self):
+        """`None` means "no comparable baseline", which is not a failure."""
+        ws = bt._quality_warnings(n_trades=400, roi=0.05, brier=0.2,
+                                  mb_brier=None, mb_n=0, beats_baseline=None)
+        assert not any("GATE FAILED" in w for w in ws)
+
+    def test_quality_warning_order_is_sample_then_roi_then_gate(self):
+        ws = bt._quality_warnings(n_trades=3, roi=-0.5, brier=0.3,
+                                  mb_brier=0.1, mb_n=3, beats_baseline=False)
+        assert len(ws) == 3
+        assert "losing money" in ws[1] and "GATE FAILED" in ws[2]
+
+    def test_cash_warnings_are_silent_when_unconstrained(self):
+        """The counters are not meaningful with the constraint off, so
+        reporting them there would be reporting noise."""
+        assert bt._cash_constraint_warnings(
+            portfolio_constrained=False, n_skipped_for_cash=9,
+            n_clipped=9) == []
+
+    def test_cash_warnings_report_skipped_then_clipped(self):
+        ws = bt._cash_constraint_warnings(
+            portfolio_constrained=True, n_skipped_for_cash=4, n_clipped=7)
+        assert len(ws) == 2
+        assert "4 trade(s) skipped" in ws[0]
+        assert "7 trade(s) clipped" in ws[1]
+
+    def test_cash_warnings_omit_a_group_with_a_zero_count(self):
+        ws = bt._cash_constraint_warnings(
+            portfolio_constrained=True, n_skipped_for_cash=0, n_clipped=2)
+        assert len(ws) == 1 and "clipped" in ws[0]
+
+    def test_walk_forward_keeps_signal_flip_between_the_two_groups(self):
+        """Ordering is what the UI renders, and the extraction had to preserve
+        it: quality warnings, then this engine's own, then cash."""
+        as_of = datetime(2026, 5, 1, tzinfo=UTC)
+        prices = _price_history([0.5, 0.6, 0.4, 0.6, 0.4, 0.6],
+                                start=as_of - timedelta(hours=6))
+        pairs = [(bt.MarketSnapshot("C0", "q?", "Sports", as_of, prices),
+                  bt.Resolution("C0", False, as_of + timedelta(days=2)))]
+
+        def flipper(snap):
+            p = snap.latest_price
+            return bt.Signal("YES", 0.9) if p and p < 0.5 else bt.Signal("NO", 0.9)
+
+        r = bt.run_backtest_walk_forward(
+            flipper, pairs, bankroll=1000.0, kelly_multiplier=0.5,
+            half_spread=0.0, eval_step_hours=1.0)
+        # The fixture is built to produce flip exits; assert that rather than
+        # guarding on it, so the ordering check cannot quietly go vacuous.
+        assert list(r.trades["exit_reason"]) == ["signal_flip", "signal_flip"]
+        flips = [i for i, w in enumerate(r.warnings) if "signal flip" in w]
+        assert len(flips) == 1, f"expected one flip warning in {r.warnings}"
+        i = flips[0]
+        assert any("GATE FAILED" in w for w in r.warnings[:i]), \
+            "quality warnings must precede the signal-flip warning"
+        assert not any("GATE FAILED" in w for w in r.warnings[i + 1:])
+        assert not any("trade(s) skipped" in w or "trade(s) clipped" in w
+                       for w in r.warnings[:i]), \
+            "cash warnings must follow the signal-flip warning"
