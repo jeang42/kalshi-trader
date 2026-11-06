@@ -7,7 +7,25 @@ import subprocess
 
 import pytest
 
+import pm
 from pm.core import provenance as pv
+
+# Two tests below compare this module's output against real git metadata, so
+# they need a real repository. A GitHub source ZIP is a complete, correct
+# checkout WITHOUT `.git`, and there they were failing on the environment
+# rather than on the code — one on a SHA mismatch, one with a TypeError from
+# `re.fullmatch(..., None)` because `git_commit()` correctly returned None.
+#
+# Skipped, not rewritten: returning None without a repository is provenance's
+# documented contract and `test_no_repo_gives_none_not_an_error` already pins
+# it (by monkeypatching `_repo_root`, so it runs everywhere). What these two
+# add is agreement with git itself, which is only checkable where git is.
+needs_git = pytest.mark.skipif(
+    not (pm.REPO_ROOT / ".git").exists(),
+    reason="no .git (source archive rather than a clone) — provenance is "
+           "documented to return None here, which test_no_repo_gives_none_"
+           "not_an_error covers without needing a repository",
+)
 
 
 @pytest.fixture(autouse=True)
@@ -19,6 +37,7 @@ def _uncached():
     pv.is_dirty.cache_clear()
 
 
+@needs_git
 def test_git_commit_matches_git_rev_parse(monkeypatch):
     monkeypatch.delenv("PROVENANCE_COMMIT", raising=False)
     want = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
@@ -32,6 +51,7 @@ def test_env_override_wins(monkeypatch):
     assert pv.is_dirty() is False
 
 
+@needs_git
 def test_stamp_and_line_shapes(monkeypatch):
     monkeypatch.delenv("PROVENANCE_COMMIT", raising=False)
     s = pv.stamp()

@@ -28,9 +28,37 @@ from pm.core import emergency_stop, profiles
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+# Files that exist ONLY at the repository root, so finding all of them
+# together means REPO_ROOT really is the root and not some package directory
+# that happens to be an ancestor of a module.
+#
+# Deliberately NOT `.git`: that was the original check, and it made the test
+# depend on repository METADATA rather than on repository CONTENT. Anyone who
+# downloads a GitHub source ZIP instead of cloning gets the whole tree without
+# `.git`, and this test — the first in the layout contract — failed for them
+# on a correct checkout. Nothing in `pm.REPO_ROOT` needs git to be right;
+# `pm/core/provenance.py` is the only module that reads `.git`, and it is
+# documented to return None without one.
+ROOT_MARKERS = ("pyproject.toml", "LICENSE", "README.md", "pm/__init__.py")
+
+
 def test_repo_root_points_at_the_repository():
     assert pm.REPO_ROOT == REPO_ROOT
-    assert (pm.REPO_ROOT / ".git").exists()
+    missing = [m for m in ROOT_MARKERS if not (pm.REPO_ROOT / m).exists()]
+    assert missing == [], (
+        f"pm.REPO_ROOT ({pm.REPO_ROOT}) is missing root markers {missing} — "
+        "it is not pointing at the repository root")
+
+
+def test_repo_root_is_not_a_package_directory():
+    """The failure mode this whole file exists for: when `emergency_stop` moved
+    to pm/core/, a `__file__`-relative default became `pm/core/data/...` and
+    nothing crashed. A root that is itself an importable package is the shape
+    of that bug, so rule it out directly rather than inferring it from markers.
+    """
+    assert not (pm.REPO_ROOT / "__init__.py").exists(), (
+        "pm.REPO_ROOT is an importable package directory, so it has resolved "
+        "to a package instead of the repository root")
 
 
 def test_emergency_stop_default_flag_is_at_the_repo_data_dir():
