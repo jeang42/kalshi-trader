@@ -24,12 +24,25 @@ repos:
       - id: ruff
         args: [--fix]
 
-  # mypy — type check on the four non-Streamlit modules
+  # mypy — type check on the gated non-Streamlit modules.
+  #
+  # `pass_filenames: false` + no `args` means this runs a BARE `mypy`, which
+  # takes its target list from `[tool.mypy] files` in pyproject.toml — the
+  # same list `make typecheck` and the CI job use. Do not reintroduce a
+  # `files:` regex here: the previous one listed pre-R-24 ROOT-level module
+  # names (`^(polymarket_client|...)\.py$`), and once the modules moved under
+  # pm/ it matched exactly ONE file in the tree (`live_gates.py`, the root
+  # shim). The hook reported success without type-checking anything the gate
+  # was meant to cover, for as long as the pm/ layout has existed.
+  #
+  # Checking the whole gated list on every commit rather than just the staged
+  # files costs ~2s warm (mypy's incremental cache does the work) and is the
+  # price of the two tools agreeing.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.13.0
     hooks:
       - id: mypy
-        files: ^(polymarket_client|portfolio|calibration|alerts|risk|profiles|provider|kalshi_client|backtest|crypto_data|edges|llm_data|llm_matcher|llm_cache|sports_data|manifold_data|macro_data|slippage|book_archive|book_poller|strategy_runner|backtest_history|kalshi_auth|kalshi_orders|llm_deep_analysis|web_context|auto_resolve_runner|bulk_deep_analysis|atomic_io|live_gates|backup_sqlite|execution)\.py$
+        pass_filenames: false
         additional_dependencies:
           # No pandas-stubs: see the note in .github/workflows/ci.yml —
           # it reports ~39 pre-existing errors and must match CI.

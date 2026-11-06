@@ -304,3 +304,10 @@ For anything else: [nexurite.ai](https://nexurite.ai).
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
 Copyright 2026 [Jeff Angelcyk](https://nexurite.ai).
+
+Fork, copy, modify and redistribute freely under those terms. Not published as
+a package on PyPI — this is an application and a research record, not a
+library, so there is no `pip install kalshi-trader`. Vendor what you need or
+run it from a clone. (`pyproject.toml` carries a `Private :: Do Not Upload`
+classifier to make an accidental index upload fail; that is a distribution
+choice, not a restriction on the licence.)

@@ -7,12 +7,35 @@ requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [{name = "Jeff Angelcyk"}]
 keywords = ["kalshi", "polymarket", "prediction-markets", "kelly-criterion", "streamlit"]
+# The code is PUBLIC and Apache-2.0 licensed (see LICENSE / NOTICE). That is a
+# licensing fact and it is independent of the two lines below, which are a
+# *distribution* policy: this repository is an application and a research
+# record, not a library, and it is not published as a package on PyPI. Anyone
+# may fork, copy, modify and redistribute it under the Apache-2.0 terms; the
+# only thing declined here is maintaining a package index entry.
+#
+# Nothing here is a build target. There is deliberately no `[build-system]`
+# table and no package-discovery config, so the project cannot be built into a
+# distributable artifact at all: `python -m build --wheel` stops at setuptools'
+# flat-layout guard ("Multiple top-level packages discovered in a flat-layout:
+# ['pm', 'wnba', 'edges', ...]") before any metadata is read. That is the
+# primary guard against an accidental release, and `tests/test_tooling_config.py`
+# pins it.
+#
+# `Private :: Do Not Upload` below is the second, independent guard, for the
+# case where someone adds packaging config without reading this. It is NOT a
+# registered trove classifier — that is the whole mechanism: PyPI rejects any
+# upload carrying an unrecognised classifier, so the push fails at the index
+# rather than succeeding quietly. Keep it unless you are deliberately setting
+# up a real release, in which case remove it on purpose.
+#
+# The `dependencies` / `optional-dependencies` tables below are the manifest of
+# record for humans and for dependency scanners. What you actually install is
+# `requirements.txt` (floating, for development) or `requirements.lock.txt`
+# (pinned, what CI's test-lock job proves still works) — see README "Testing".
 classifiers = [
     "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: Apache Software License",
-    # Kept deliberately: this repo is an application, not a library — it has
-    # no build-system/packaging config, and an accidental `twine upload`
-    # should fail. Remove this line only with a real packaging setup.
     "Private :: Do Not Upload",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -167,3 +190,54 @@ warn_return_any = false
 check_untyped_defs = true
 disallow_untyped_defs = false       # don't require annotations everywhere
 exclude = ["app\\.py$", "tests/", "htmlcov/", "\\.venv/", "attic/"]
+
+# The gated modules — the ONE place this list lives. `mypy` with no arguments
+# checks exactly these, so the Makefile target, the CI job and the pre-commit
+# hook all invoke a bare `mypy` and cannot drift apart. They previously each
+# carried their own copy of the list and the pre-commit hook's copy was a
+# regex of pre-R-24 ROOT-level filenames (`^(polymarket_client|...)\.py$`),
+# which after the pm/ package move matched exactly one file in the tree
+# (`live_gates.py`, the root shim) — the local type-check gate had been a
+# no-op while CI stayed correct.
+#
+# This is deliberately a list and not the whole tree: see the note above on
+# why the settings are permissive. Adding a module here is the intended way
+# to opt it in.
+files = [
+    "pm/venue/polymarket_client.py",
+    "pm/ledger/portfolio.py",
+    "pm/ledger/calibration.py",
+    "pm/ledger/alerts.py",
+    "pm/ledger/risk.py",
+    "pm/core/profiles.py",
+    "pm/venue/provider.py",
+    "pm/venue/kalshi_client.py",
+    "pm/research/backtest.py",
+    "pm/feeds/crypto_data.py",
+    "edges/",
+    "pm/feeds/llm_data.py",
+    "pm/feeds/llm_matcher.py",
+    "pm/feeds/llm_cache.py",
+    "pm/feeds/sports_data.py",
+    "pm/feeds/manifold_data.py",
+    "pm/feeds/macro_data.py",
+    "pm/venue/slippage.py",
+    "pm/archive/book_archive.py",
+    "pm/capture/book_poller.py",
+    "pm/arms/strategy_runner.py",
+    "pm/research/backtest_history.py",
+    "pm/venue/kalshi_auth.py",
+    "pm/venue/kalshi_orders.py",
+    "pm/feeds/llm_deep_analysis.py",
+    "pm/feeds/web_context.py",
+    "pm/ops/auto_resolve_runner.py",
+    "pm/ops/bulk_deep_analysis.py",
+    "pm/core/atomic_io.py",
+    "pm/trading/live_gates.py",
+    "pm/ops/backup_sqlite.py",
+    "pm/trading/execution.py",
+    "pm/core/sqlite_schema.py",
+    "pm/core/shutdown.py",
+    "pm/core/provenance.py",
+    "pm/core/circuit_breaker.py",
+]
