@@ -1248,7 +1248,7 @@ Cron-able CLI runner that walks every profile and marks pending forecasts whose 
 
 Save/restores the user's UI-selected profile around the cycle so cron firings don't steal the sidebar. Same pattern as `strategy_runner`.
 
-Cron line: `*/15 * * * * cd <repo> && .venv/bin/python auto_resolve_runner.py >> data/shared/auto_resolve.log 2>&1`
+Cron line: `*/15 * * * * cd <repo> && .venv/bin/python -m pm.ops.auto_resolve_runner >> data/shared/auto_resolve.log 2>&1`
 
 The script also `load_dotenv()`s at module level so `KALSHI_API_KEY_ID` reaches the settlement-overlay path when run from cron (one of the day-1 bugs).
 
@@ -1799,9 +1799,9 @@ Three long-running daemons need to survive reboots and power outages. They run a
 |---|---|---|
 | `baseball-web` | `baseball-web.service` | `python -m baseball.web` (FastAPI on :8770) |
 | `baseball-live` | `baseball-live.service` | `python -m baseball.live --loop --interval 10` |
-| `mlb-book-poller` | `mlb-book-poller.service` | `python mlb_book_poller.py --loop --interval 15 --idle-interval 120` |
-| `kalshi-ws` | `kalshi-ws.service` | `python kalshi_ws.py --archive-interval 15` |
-| `pre-position` | `pre-position.service` | `python pre_position.py --loop --interval 10` |
+| `mlb-book-poller` | `mlb-book-poller.service` | `python -m pm.capture.mlb_book_poller --loop --interval 15 --idle-interval 120` |
+| `kalshi-ws` | `kalshi-ws.service` | `python -m pm.capture.kalshi_ws --archive-interval 15` |
+| `pre-position` | `pre-position.service` | `python -m pm.arms.pre_position --loop --interval 10` |
 
 All use `Restart=on-failure` with a 10s delay. `loginctl enable-linger <user>` is set so services start at boot without requiring a login session.
 
@@ -1948,7 +1948,7 @@ Methods: `transcribe_stream(source)` yields `TranscriptSegment` objects
 (text, start_time, end_time, confidence). `transcribe_file(path)`
 convenience wrapper.
 
-**CLI**: `python audio_transcribe.py "https://stream-url" --model small`.
+**CLI**: `python -m pm.mention.audio_transcribe "https://stream-url" --model small`.
 
 **Performance**: 5s chunks processed in <1s on RTX 5000 Ada with the
 `small` model. Total latency per chunk: ~6 seconds (5s capture + 1s
@@ -1980,7 +1980,7 @@ per event type wins. Handles broadcaster variation ("GONE", "GOODBYE",
 "see you later" all → HOME_RUN). Run-count estimation from text
 ("grand slam" → 4, "two-run shot" → 2).
 
-**CLI**: `python broadcast_events.py` runs a test suite on 14 sample
+**CLI** (as it was when the module lived at the repository root; it is in `attic/` now and is not runnable in place): `python broadcast_events.py` runs a test suite on 14 sample
 phrases for verification.
 
 Framework is domain-agnostic — baseball patterns are one instantiation.

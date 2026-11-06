@@ -122,7 +122,7 @@ systemctl --user daemon-reload
 
 `loginctl enable-linger` is set so services start at boot without a login session. The shell launcher scripts (`scripts/*.sh --background`) still work for ad-hoc use but are no longer needed for persistent operation.
 
-**After a power outage**: daemons restart automatically. Order book snapshots during downtime are lost (no historical API). Play-by-play can be backfilled: `.venv/bin/python -m baseball.backfill --start YYYY-MM-DD --end YYYY-MM-DD`. Then run `.venv/bin/python auto_resolve_runner.py` to catch up on missed resolutions.
+**After a power outage**: daemons restart automatically. Order book snapshots during downtime are lost (no historical API). Play-by-play can be backfilled: `.venv/bin/python -m baseball.backfill --start YYYY-MM-DD --end YYYY-MM-DD`. Then run `.venv/bin/python -m pm.ops.auto_resolve_runner` to catch up on missed resolutions.
 
 ### Cron-driven background jobs (install once, runs forever)
 
@@ -152,10 +152,9 @@ To install the cron lines fresh on a new machine, copy them from a working `cron
 | Manually refresh baseball state right now | `.venv/bin/python -m baseball.runner` |
 | One bulk deep-analysis pass across all models | `scripts/run_all_models.sh 15` (N markets per model) |
 | Force a fresh backup snapshot | `scripts/backup.sh` |
-| One auto-resolve cycle | `.venv/bin/python auto_resolve_runner.py` |
-| Snapshot all profiles now | `.venv/bin/python snapshot_runner.py --min-interval-hours 0` |
-| Transcribe a live audio stream | `.venv/bin/python audio_transcribe.py "https://stream-url" --model small` |
-| Test baseball event extraction | `.venv/bin/python broadcast_events.py` |
+| One auto-resolve cycle | `.venv/bin/python -m pm.ops.auto_resolve_runner` |
+| Snapshot all profiles now | `.venv/bin/python -m pm.ops.snapshot_runner --min-interval-hours 0` |
+| Transcribe a live audio stream | `.venv/bin/python -m pm.mention.audio_transcribe "https://stream-url" --model small` |
 
 ### Order of operations on a fresh checkout
 

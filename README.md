@@ -135,7 +135,7 @@ scripts/tennis_web.sh                      # tennis UI on :8772
 # in .env for the FastAPI UIs (shared-secret gate), and BIND_HOST=0.0.0.0
 # for the Streamlit app — which has NO auth, so anyone who reaches it can
 # act as you. See pm/core/web_auth.py.
-python trade_poller.py --loop --interval 30   # Kalshi executed-trade tape → archive
+python -m pm.capture.trade_poller --loop --interval 30   # Kalshi executed-trade tape → archive
 ```
 
 In long-running use these are **systemd user services** — the unit files and
@@ -217,20 +217,36 @@ kalshi-trader/
 ## Testing
 
 ```bash
-make check         # everything CI runs: ruff + mypy + pytest + pip-audit
-make test          # pytest + doctests + coverage report
-make test-fast     # no coverage, faster feedback loop
+make test-fast     # pytest, no coverage — the fast feedback loop
+make test          # pytest + doctests + coverage report (80% floor)
+make lint          # ruff
+make typecheck     # mypy, on the module list in pyproject.toml's [tool.mypy]
+make check         # all of the above + the dependency audit
 ```
 
-CI runs on every push (`.github/workflows/ci.yml`) with four jobs: lint,
-typecheck, test, audit. Coverage floor: 80% — the gate covers the modules that
-transact, not just the analytical ones. Tests cannot reach the network
-(`socket.connect` is blocked for every test) and cannot write into `data/`
-(a session tripwire fails the run if they do).
+`pip install -r requirements.txt` is enough for everything above except the
+audit step of `make check`: `pip-audit` is deliberately not in
+`requirements.txt` (it pulls in its own dependency tree) and it needs network
+access, so install it once with `pip install pip-audit` or run the other
+targets individually.
+
+CI runs on every push (`.github/workflows/ci.yml`) with five jobs: lint,
+typecheck, test, test-lock, audit. `test` installs the floating
+`requirements.txt`; `test-lock` installs the pinned
+`requirements.lock.txt` and reruns the suite, so the lock file is proven to
+still produce a working environment rather than only being scanned for CVEs.
+
+Coverage floor: 80% — the gate covers the modules that transact, not just the
+analytical ones. Tests cannot reach the network (`socket.connect` is blocked
+for every test) and cannot write into `data/` (a session tripwire fails the
+run if they do). The suite needs no API keys, no network and no GPU, and it
+passes from a source archive as well as from a clone.
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.11+ (CI exercises 3.11 only; 3.12 and 3.13 are declared in
+  `pyproject.toml` and expected to work, but are not covered by the test
+  matrix — check before relying on them)
 - Core dependencies: `streamlit`, `pandas`, `numpy`, `plotly`, `requests`
 - **Optional: [Ollama](https://ollama.com)** for the LLM features (🧠 Deep
   Analysis, the `llm` edge source, the sidecar Chat pages). Defaults to a
