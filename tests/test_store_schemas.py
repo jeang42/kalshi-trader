@@ -77,5 +77,3 @@ def test_legacy_arm_store_is_adopted_rebuilt_and_constrained(tmp_path, monkeypat
         c.execute(bad_insert)
     # the arm's own summary still reads the store
     assert isinstance(m.summary(), dict)
-
-

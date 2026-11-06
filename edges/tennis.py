@@ -196,5 +196,3 @@ def strategy_tennis_value(
 # Brownian) but right in order-of-magnitude for short horizons. CPI YoY
 # and GDP growth need transformations not yet implemented; their
 # questions are skipped.
-
-

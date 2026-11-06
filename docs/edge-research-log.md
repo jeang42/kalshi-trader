@@ -1064,7 +1064,7 @@ spot source first (see collection plan).
 3. **🆕 OTA tuner nightly corpus (the 4-channel HDHomeRun).** The mention
    detector's binding constraint is precision/recall (71%/53% at WHCD), and
    tuning it needs ground-truth audio+outcome pairs. The tuner gives us, free,
-   every night: **late-night monologues** (NBC Tonight Show, ABC Kimmel — 
+   every night: **late-night monologues** (NBC Tonight Show, ABC Kimmel —
    monologue ≈ single speaker = attribution tier 1-2; `KXLATENIGHTMENTION`
    already captured, 69 tickers), **MLB national broadcasts** (FOX Saturday —
    booth audio is cleaner than C-SPAN floor feeds), and from September **NFL

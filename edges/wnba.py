@@ -150,5 +150,3 @@ def strategy_wnba_favorite_hold(
 # bridge needs the market QUESTION (the YES player's full name lives there,
 # not in the 3-letter ticker code), so the adapter passes snap.question to
 # the sidecar. See docs/sports-model-playbook.md.
-
-

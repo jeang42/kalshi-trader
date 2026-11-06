@@ -339,4 +339,3 @@ def find_crypto_edges(
 # rather than forecasting them. When using the registered backtest
 # strategy, restrict the dataset to markets that closed after the
 # model's training cutoff for honest results.
-

@@ -371,5 +371,3 @@ class TestLiveBrokerReporting:
         assert res.filled_count == 50
         # "filled" means the SUBMITTED order filled — not the requested 100.
         assert res.status == "filled" and res.ok
-
-

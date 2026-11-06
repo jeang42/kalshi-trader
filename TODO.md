@@ -761,4 +761,3 @@ Living docs are part of every change. See [Developer Guide § Documentation Main
   results under frozen rules (`python -m oos_ledger --status`), and decide on
   that evidence whether to re-arm real money and at what size. Scaling is gated
   on out-of-sample evidence, not on the cumulative number.
-

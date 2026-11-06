@@ -94,5 +94,3 @@ def _row_to_snapshot(row: pd.Series, *, as_of: datetime) -> bt.MarketSnapshot:
         prices=prices_df,
         end_date=end_dt,
     )
-
-

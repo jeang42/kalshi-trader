@@ -379,5 +379,3 @@ def strategy_baseball_winprob(
 # ticker), so this adapter is thin — it just maps a Kalshi ticker to the
 # model's P(YES) and compares to the venue price. Mirrors the baseball
 # adapter; see docs/sports-model-playbook.md §6.
-
-

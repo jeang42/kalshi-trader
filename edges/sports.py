@@ -253,5 +253,3 @@ def strategy_sports_winprob(
 #
 # This adapter is the ONLY market-app place that imports `baseball`. The
 # sidecar itself never imports back — protects the directional dependency.
-
-

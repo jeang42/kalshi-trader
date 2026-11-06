@@ -4,6 +4,21 @@
 # After that, `git commit` runs ruff + mypy automatically. Skip with `--no-verify`
 # only when you have a deliberate reason — CI will still enforce both.
 
+# Files no hook may rewrite, because their bytes are the point:
+#
+#   */static/htmx.min.js  vendored third-party (htmx 1.9.12, BSD-2-Clause,
+#                         attributed in NOTICE). It ships with no trailing
+#                         newline, so `end-of-file-fixer` "fixes" all three
+#                         copies and they stop matching upstream — which
+#                         defeats vendoring and makes the NOTICE inaccurate.
+#   research/*.json       recorded research output. Reformatting a result
+#                         file is editing the research record.
+#   docs/images/          binary.
+#
+# Without this, `pre-commit run --all-files` on a clean checkout rewrote 17
+# files, four of them in these categories.
+exclude: '^(baseball|tennis|wnba)/static/|^research/.*\.json$|^docs/images/'
+
 repos:
   # Built-in housekeeping
   - repo: https://github.com/pre-commit/pre-commit-hooks

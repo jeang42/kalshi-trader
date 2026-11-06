@@ -271,5 +271,3 @@ def find_macro_edges(
 #      noise" and skip.
 #   4. If the surviving match's probability disagrees with the venue
 #      YES by ``min_gap`` or more, emit an Edge.
-
-
